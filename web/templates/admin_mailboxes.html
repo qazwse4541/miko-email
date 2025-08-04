@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>邮箱管理 - {{.site_name}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-radius: 0 20px 20px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar .nav-link {
+            color: #667eea !important;
+            border-radius: 12px;
+            margin: 0.25rem 0;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background: linear-gradient(45deg, #667eea, #764ba2) !important;
+            color: white !important;
+            transform: translateX(5px);
+        }
+
+        .main-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px 0 0 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .border-left-primary {
+            border-left: 4px solid #667eea !important;
+        }
+
+        .border-left-success {
+            border-left: 4px solid #28a745 !important;
+        }
+
+        .border-left-info {
+            border-left: 4px solid #17a2b8 !important;
+        }
+
+        .border-left-warning {
+            border-left: 4px solid #ffc107 !important;
+        }
+
+        .btn {
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .form-control,
+        .form-select {
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        .table {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .badge {
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+        }
+
+        .toast {
+            border-radius: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row min-vh-100">
+            <!-- 侧边栏 -->
+            <div class="col-md-3 col-lg-2 sidebar">
+                <div class="d-flex flex-column h-100 p-3 text-dark">
+                    <a href="/admin/dashboard"
+                        class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none">
+                        {{if .site_logo}}
+                            <img src="{{.site_logo}}" alt="{{.site_name}}" style="height: 32px; margin-right: 8px;">
+                        {{else}}
+                            <i class="bi bi-shield-check me-2 text-primary"></i>
+                        {{end}}
+                        <span class="fs-4 fw-bold text-primary">{{.site_name}}管理</span>
+                    </a>
+                    <hr>
+                    <ul class="nav nav-pills flex-column mb-auto">
+                        <li class="nav-item">
+                            <a href="/admin/dashboard" class="nav-link">
+                                <i class="bi bi-speedometer2 me-2"></i>
+                                仪表板
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/admin/users" class="nav-link">
+                                <i class="bi bi-people me-2"></i>
+                                用户管理
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/admin/mailboxes" class="nav-link active">
+                                <i class="bi bi-envelope me-2"></i>
+                                邮箱管理
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/admin/domains" class="nav-link">
+                                <i class="bi bi-globe me-2"></i>
+                                域名管理
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/admin/system-settings" class="nav-link">
+                                <i class="bi bi-gear me-2"></i>
+                                系统设置
+                            </a>
+                        </li>
+                    </ul>
+                    <hr>
+                    <div class="dropdown">
+                        <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle text-primary"
+                            id="dropdownUser1" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-2"></i>
+                            <strong>管理员</strong>
+                        </a>
+                        <ul class="dropdown-menu shadow">
+                            <li><a class="dropdown-item" href="/settings">个人设置</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item" href="#" onclick="logout()">退出登录</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主内容区 -->
+            <div class="col-md-9 col-lg-10 main-content">
+                <div class="container-fluid p-4">
+                    <div
+                        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2 text-primary fw-bold">邮箱管理</h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <div class="btn-group me-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    onclick="refreshMailboxes()">
+                                    <i class="bi bi-arrow-clockwise"></i> 刷新
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 统计卡片 -->
+                    <div class="row mb-4">
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="card border-left-primary shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">总邮箱数
+                                            </div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalMailboxes">0
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="bi bi-envelope display-4 text-primary"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="card border-left-success shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">活跃邮箱
+                                            </div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="activeMailboxes">0
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="bi bi-check-circle display-4 text-success"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="card border-left-warning shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">暂停邮箱
+                                            </div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="suspendedMailboxes">
+                                                0</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="bi bi-pause-circle display-4 text-warning"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="card border-left-info shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">今日创建
+                                            </div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="todayCreated">0
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="bi bi-calendar-plus display-4 text-info"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 搜索和筛选 -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" id="searchInput" placeholder="搜索邮箱地址..."
+                                onkeyup="filterMailboxes()">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="statusFilter" onchange="filterMailboxes()">
+                                <option value="">所有状态</option>
+                                <option value="active">活跃</option>
+                                <option value="suspended">暂停</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="userFilter" onchange="filterMailboxes()">
+                                <option value="">所有用户</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="sortBy" onchange="sortMailboxes()">
+                                <option value="created_at_desc">创建时间 (新到旧)</option>
+                                <option value="created_at_asc">创建时间 (旧到新)</option>
+                                <option value="email_asc">邮箱地址 (A-Z)</option>
+                                <option value="email_desc">邮箱地址 (Z-A)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 批量操作按钮 -->
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                    onclick="selectAllMailboxes()">
+                                    <i class="bi bi-check-all"></i> 全选
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    onclick="deselectAllMailboxes()">
+                                    <i class="bi bi-x-square"></i> 反选
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-success"
+                                    onclick="enableSelectedMailboxes()">
+                                    <i class="bi bi-check-circle"></i> 启用选中
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-warning"
+                                    onclick="disableSelectedMailboxes()">
+                                    <i class="bi bi-pause-circle"></i> 禁用选中
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                    onclick="deleteSelectedMailboxes()">
+                                    <i class="bi bi-trash"></i> 删除选中
+                                </button>
+                            </div>
+                            <span class="ms-3 text-muted" id="selectedCount">已选择 0 个邮箱</span>
+                        </div>
+                    </div>
+
+                    <!-- 邮箱列表 -->
+                    <div class="card shadow">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">邮箱列表</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered" id="mailboxesTable">
+                                    <thead>
+                                        <tr>
+                                            <th width="50">
+                                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                                            </th>
+                                            <th>邮箱地址</th>
+                                            <th>所属用户</th>
+                                            <th>状态</th>
+                                            <th>创建时间</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mailboxesTableBody">
+                                        <tr>
+                                            <td colspan="6" class="text-center py-4">
+                                                <div class="spinner-border text-primary" role="status">
+                                                    <span class="visually-hidden">加载中...</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- 分页 -->
+                            <nav aria-label="邮箱列表分页" id="paginationContainer" style="display: none;">
+                                <ul class="pagination justify-content-center" id="pagination">
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 邮箱详情模态框 -->
+    <div class="modal fade" id="mailboxModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">邮箱详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>基本信息</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>邮箱地址:</td>
+                                    <td id="modalEmail">-</td>
+                                </tr>
+                                <tr>
+                                    <td>所属用户:</td>
+                                    <td id="modalUser">-</td>
+                                </tr>
+                                <tr>
+                                    <td>状态:</td>
+                                    <td id="modalStatus">-</td>
+                                </tr>
+                                <tr>
+                                    <td>创建时间:</td>
+                                    <td id="modalCreatedAt">-</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>邮件统计</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>收件数量:</td>
+                                    <td id="modalInboxCount">-</td>
+                                </tr>
+                                <tr>
+                                    <td>发件数量:</td>
+                                    <td id="modalSentCount">-</td>
+                                </tr>
+                                <tr>
+                                    <td>最后活动:</td>
+                                    <td id="modalLastActivity">-</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-warning" onclick="toggleMailboxStatus()">
+                        <i class="bi bi-pause-circle"></i> <span id="toggleStatusText">暂停邮箱</span>
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="deleteMailboxFromModal()">
+                        <i class="bi bi-trash"></i> 删除邮箱
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 全局提示框 -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="alertToast" class="toast" role="alert">
+            <div class="toast-header">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong class="me-auto">系统提示</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="alertMessage">
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="/static/js/common.js"></script>
+    <script>
+        // 配置axios发送cookies
+        axios.defaults.withCredentials = true;
+        axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+        let currentMailboxes = [];
+        let filteredMailboxes = [];
+        let selectedMailboxId = null;
+        let currentPage = 1;
+        const itemsPerPage = 20;
+
+        // 页面加载时获取数据
+        document.addEventListener('DOMContentLoaded', function () {
+            loadMailboxes();
+            loadUsers();
+        });
+
+        async function loadMailboxes() {
+            try {
+                const response = await axios.get('/api/admin/mailboxes');
+                if (response.data.success) {
+                    // 确保data是数组，如果为null或undefined则使用空数组
+                    currentMailboxes = response.data.data || [];
+                    filteredMailboxes = [...currentMailboxes];
+                    updateStatistics();
+                    renderMailboxes();
+                }
+            } catch (error) {
+                console.error('Failed to load mailboxes:', error);
+                showAlert('加载邮箱列表失败');
+            }
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await axios.get('/api/admin/users');
+                if (response.data.success) {
+                    const userFilter = document.getElementById('userFilter');
+                    response.data.data.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = user.username;
+                        userFilter.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load users:', error);
+            }
+        }
+
+        function updateStatistics() {
+            const total = currentMailboxes.length;
+            const active = currentMailboxes.filter(m => m.status === 'active').length;
+            const suspended = currentMailboxes.filter(m => m.status === 'suspended').length;
+
+            // 计算今日创建的邮箱数量
+            const today = new Date().toDateString();
+            const todayCreated = currentMailboxes.filter(m => {
+                const createdDate = new Date(m.created_at).toDateString();
+                return createdDate === today;
+            }).length;
+
+            document.getElementById('totalMailboxes').textContent = total;
+            document.getElementById('activeMailboxes').textContent = active;
+            document.getElementById('suspendedMailboxes').textContent = suspended;
+            document.getElementById('todayCreated').textContent = todayCreated;
+        }
+
+        function renderMailboxes() {
+            const tbody = document.getElementById('mailboxesTableBody');
+
+            if (!filteredMailboxes || filteredMailboxes.length === 0) {
+                tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-4">
+                    <i class="bi bi-inbox display-1 text-muted"></i>
+                    <p class="text-muted mt-3">暂无邮箱数据</p>
+                </td>
+            </tr>
+        `;
+                document.getElementById('paginationContainer').style.display = 'none';
+                return;
+            }
+
+            // 分页处理
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageMailboxes = filteredMailboxes.slice(startIndex, endIndex);
+
+            const mailboxesHtml = pageMailboxes.map(mailbox => `
+        <tr>
+            <td>
+                <input type="checkbox" class="mailbox-checkbox" value="${mailbox.id}" onchange="updateSelectedCount()">
+            </td>
+            <td>${mailbox.email}</td>
+            <td>${mailbox.username || '未知用户'}</td>
+            <td>${getStatusBadge(mailbox.status)}</td>
+            <td>${formatDate(mailbox.created_at)}</td>
+            <td>
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-primary" onclick="showMailboxDetail('${mailbox.id}')">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                    <button class="btn btn-sm ${mailbox.status === 'active' ? 'btn-outline-warning' : 'btn-outline-success'}" onclick="toggleMailboxStatus('${mailbox.id}')">
+                        <i class="bi ${mailbox.status === 'active' ? 'bi-pause-circle' : 'bi-play-circle'}"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteMailbox('${mailbox.id}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+
+            tbody.innerHTML = mailboxesHtml;
+            renderPagination();
+            updateSelectedCount();
+        }
+
+        function getStatusBadge(status) {
+            switch (status) {
+                case 'active':
+                    return '<span class="badge bg-success">活跃</span>';
+                case 'suspended':
+                    return '<span class="badge bg-warning">暂停</span>';
+                default:
+                    return '<span class="badge bg-secondary">未知</span>';
+            }
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleString('zh-CN');
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredMailboxes.length / itemsPerPage);
+            const paginationContainer = document.getElementById('paginationContainer');
+            const pagination = document.getElementById('pagination');
+
+            if (totalPages <= 1) {
+                paginationContainer.style.display = 'none';
+                return;
+            }
+
+            paginationContainer.style.display = 'block';
+
+            let paginationHtml = '';
+
+            // 上一页
+            paginationHtml += `
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">上一页</a>
+        </li>
+    `;
+
+            // 页码
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    paginationHtml += `
+                <li class="page-item ${i === currentPage ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+                </li>
+            `;
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    paginationHtml += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                }
+            }
+
+            // 下一页
+            paginationHtml += `
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">下一页</a>
+        </li>
+    `;
+
+            pagination.innerHTML = paginationHtml;
+        }
+
+        function changePage(page) {
+            if (page < 1 || page > Math.ceil(filteredMailboxes.length / itemsPerPage)) {
+                return;
+            }
+
+            currentPage = page;
+            renderMailboxes();
+        }
+
+        // 搜索和筛选功能
+        function filterMailboxes() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const userFilter = document.getElementById('userFilter').value;
+
+            filteredMailboxes = currentMailboxes.filter(mailbox => {
+                const matchesSearch = mailbox.email.toLowerCase().includes(searchTerm);
+                const matchesStatus = !statusFilter || mailbox.status === statusFilter;
+                const matchesUser = !userFilter || mailbox.user_id == userFilter;
+
+                return matchesSearch && matchesStatus && matchesUser;
+            });
+
+            currentPage = 1;
+            renderMailboxes();
+        }
+
+        function sortMailboxes() {
+            const sortBy = document.getElementById('sortBy').value;
+
+            filteredMailboxes.sort((a, b) => {
+                switch (sortBy) {
+                    case 'created_at_desc':
+                        return new Date(b.created_at) - new Date(a.created_at);
+                    case 'created_at_asc':
+                        return new Date(a.created_at) - new Date(b.created_at);
+                    case 'email_asc':
+                        return a.email.localeCompare(b.email);
+                    case 'email_desc':
+                        return b.email.localeCompare(a.email);
+                    default:
+                        return 0;
+                }
+            });
+
+            renderMailboxes();
+        }
+
+        // 选择功能
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.mailbox-checkbox');
+
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+            });
+
+            updateSelectedCount();
+        }
+
+        function selectAllMailboxes() {
+            const checkboxes = document.querySelectorAll('.mailbox-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            document.getElementById('selectAll').checked = true;
+            updateSelectedCount();
+        }
+
+        function deselectAllMailboxes() {
+            const checkboxes = document.querySelectorAll('.mailbox-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            document.getElementById('selectAll').checked = false;
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            const selectedCheckboxes = document.querySelectorAll('.mailbox-checkbox:checked');
+            const count = selectedCheckboxes.length;
+            document.getElementById('selectedCount').textContent = `已选择 ${count} 个邮箱`;
+
+            // 更新全选复选框状态
+            const allCheckboxes = document.querySelectorAll('.mailbox-checkbox');
+            const selectAll = document.getElementById('selectAll');
+
+            if (count === 0) {
+                selectAll.indeterminate = false;
+                selectAll.checked = false;
+            } else if (count === allCheckboxes.length) {
+                selectAll.indeterminate = false;
+                selectAll.checked = true;
+            } else {
+                selectAll.indeterminate = true;
+            }
+        }
+
+        function getSelectedMailboxIds() {
+            const selectedCheckboxes = document.querySelectorAll('.mailbox-checkbox:checked');
+            return Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));
+        }
+
+        // 批量操作功能
+        async function enableSelectedMailboxes() {
+            const selectedIds = getSelectedMailboxIds();
+
+            if (selectedIds.length === 0) {
+                showAlert('请先选择要启用的邮箱');
+                return;
+            }
+
+            if (!confirm(`确定要启用选中的 ${selectedIds.length} 个邮箱吗？`)) {
+                return;
+            }
+
+            try {
+                let successCount = 0;
+                let failCount = 0;
+
+                for (const mailboxId of selectedIds) {
+                    try {
+                        const response = await axios.put(`/api/admin/mailboxes/${mailboxId}/status`, { status: 'active' });
+                        if (response.data.success) {
+                            successCount++;
+                        } else {
+                            failCount++;
+                            console.error(`启用邮箱 ${mailboxId} 失败:`, response.data.message);
+                        }
+                    } catch (error) {
+                        failCount++;
+                        console.error(`启用邮箱 ${mailboxId} 失败:`, error);
+                    }
+                }
+
+                if (successCount > 0) {
+                    showAlert(`成功启用 ${successCount} 个邮箱${failCount > 0 ? `，${failCount} 个失败` : ''}`);
+                } else {
+                    showAlert('所有邮箱启用失败');
+                }
+
+                loadMailboxes();
+            } catch (error) {
+                console.error('启用邮箱失败:', error);
+                showAlert('启用邮箱失败，请重试');
+            }
+        }
+
+        async function disableSelectedMailboxes() {
+            const selectedIds = getSelectedMailboxIds();
+
+            if (selectedIds.length === 0) {
+                showAlert('请先选择要禁用的邮箱');
+                return;
+            }
+
+            if (!confirm(`确定要禁用选中的 ${selectedIds.length} 个邮箱吗？`)) {
+                return;
+            }
+
+            try {
+                let successCount = 0;
+                let failCount = 0;
+
+                for (const mailboxId of selectedIds) {
+                    try {
+                        const response = await axios.put(`/api/admin/mailboxes/${mailboxId}/status`, { status: 'suspended' });
+                        if (response.data.success) {
+                            successCount++;
+                        } else {
+                            failCount++;
+                            console.error(`禁用邮箱 ${mailboxId} 失败:`, response.data.message);
+                        }
+                    } catch (error) {
+                        failCount++;
+                        console.error(`禁用邮箱 ${mailboxId} 失败:`, error);
+                    }
+                }
+
+                if (successCount > 0) {
+                    showAlert(`成功禁用 ${successCount} 个邮箱${failCount > 0 ? `，${failCount} 个失败` : ''}`);
+                } else {
+                    showAlert('所有邮箱禁用失败');
+                }
+
+                loadMailboxes();
+            } catch (error) {
+                console.error('禁用邮箱失败:', error);
+                showAlert('禁用邮箱失败，请重试');
+            }
+        }
+
+        async function deleteSelectedMailboxes() {
+            const selectedIds = getSelectedMailboxIds();
+
+            if (selectedIds.length === 0) {
+                showAlert('请先选择要删除的邮箱');
+                return;
+            }
+
+            if (!confirm(`确定要删除选中的 ${selectedIds.length} 个邮箱吗？此操作不可恢复！`)) {
+                return;
+            }
+
+            try {
+                let successCount = 0;
+                let failCount = 0;
+
+                for (const mailboxId of selectedIds) {
+                    try {
+                        const response = await axios.delete(`/api/admin/mailboxes/${mailboxId}`);
+                        if (response.data.success) {
+                            successCount++;
+                        } else {
+                            failCount++;
+                            console.error(`删除邮箱 ${mailboxId} 失败:`, response.data.message);
+                        }
+                    } catch (error) {
+                        failCount++;
+                        console.error(`删除邮箱 ${mailboxId} 失败:`, error);
+                    }
+                }
+
+                if (successCount > 0) {
+                    showAlert(`成功删除 ${successCount} 个邮箱${failCount > 0 ? `，${failCount} 个失败` : ''}`);
+                } else {
+                    showAlert('所有邮箱删除失败');
+                }
+
+                loadMailboxes();
+            } catch (error) {
+                console.error('删除邮箱失败:', error);
+                showAlert('删除邮箱失败，请重试');
+            }
+        }
+
+        // 单个邮箱操作
+        async function showMailboxDetail(mailboxId) {
+            selectedMailboxId = parseInt(mailboxId);
+            const mailbox = currentMailboxes.find(m => m.id === selectedMailboxId);
+            if (!mailbox) return;
+
+            // 填充邮箱基本信息
+            document.getElementById('modalEmail').textContent = mailbox.email;
+            document.getElementById('modalUser').textContent = mailbox.username || '未知用户';
+            document.getElementById('modalStatus').innerHTML = getStatusBadge(mailbox.status);
+            document.getElementById('modalCreatedAt').textContent = formatDate(mailbox.created_at);
+
+            // 更新按钮状态
+            const toggleButton = document.getElementById('toggleStatusText');
+            toggleButton.textContent = mailbox.status === 'active' ? '暂停邮箱' : '启用邮箱';
+
+            // 获取邮件统计信息
+            try {
+                const response = await axios.get(`/api/admin/mailboxes/${selectedMailboxId}/stats`);
+                if (response.data.success) {
+                    const stats = response.data.data;
+                    document.getElementById('modalInboxCount').textContent = stats.inbox_count || 0;
+                    document.getElementById('modalSentCount').textContent = stats.sent_count || 0;
+                    document.getElementById('modalLastActivity').textContent = stats.last_activity ? formatDate(stats.last_activity) : '无';
+                }
+            } catch (error) {
+                console.error('获取邮箱统计失败:', error);
+                document.getElementById('modalInboxCount').textContent = '-';
+                document.getElementById('modalSentCount').textContent = '-';
+                document.getElementById('modalLastActivity').textContent = '-';
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('mailboxModal'));
+            modal.show();
+        }
+
+        async function toggleMailboxStatus(mailboxId) {
+            const targetId = mailboxId ? parseInt(mailboxId) : selectedMailboxId;
+            const mailbox = currentMailboxes.find(m => m.id === targetId);
+            if (!mailbox) {
+                console.error('未找到邮箱:', targetId, '可用邮箱:', currentMailboxes);
+                showAlert('未找到指定邮箱');
+                return;
+            }
+
+            const newStatus = mailbox.status === 'active' ? 'suspended' : 'active';
+            const action = newStatus === 'suspended' ? '暂停' : '启用';
+
+            if (!confirm(`确定要${action}邮箱 ${mailbox.email} 吗？`)) {
+                return;
+            }
+
+            try {
+                const response = await axios.put(`/api/admin/mailboxes/${targetId}/status`, {
+                    status: newStatus
+                });
+
+                if (response.data.success) {
+                    showAlert(`邮箱${action}成功！`);
+                    loadMailboxes();
+
+                    // 如果模态框打开，关闭它
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('mailboxModal'));
+                    if (modal) {
+                        modal.hide();
+                    }
+                } else {
+                    showAlert(response.data.message || `邮箱${action}失败`);
+                }
+            } catch (error) {
+                console.error('切换邮箱状态失败:', error);
+                showAlert('操作失败，请稍后重试');
+            }
+        }
+
+        async function deleteMailbox(mailboxId) {
+            const targetId = mailboxId ? parseInt(mailboxId) : selectedMailboxId;
+            const mailbox = currentMailboxes.find(m => m.id === targetId);
+            if (!mailbox) return;
+
+            if (!confirm(`确定要删除邮箱 ${mailbox.email} 吗？此操作不可恢复！`)) {
+                return;
+            }
+
+            try {
+                const response = await axios.delete(`/api/admin/mailboxes/${targetId}`);
+                if (response.data.success) {
+                    showAlert('邮箱删除成功');
+                    loadMailboxes();
+
+                    // 如果模态框打开，关闭它
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('mailboxModal'));
+                    if (modal) {
+                        modal.hide();
+                    }
+                } else {
+                    showAlert(response.data.message || '删除邮箱失败');
+                }
+            } catch (error) {
+                console.error('删除邮箱失败:', error);
+                if (error.response && error.response.data && error.response.data.message) {
+                    showAlert(error.response.data.message);
+                } else {
+                    showAlert('删除邮箱失败，请重试');
+                }
+            }
+        }
+
+        function deleteMailboxFromModal() {
+            deleteMailbox();
+        }
+
+        // 工具函数
+        function refreshMailboxes() {
+            loadMailboxes();
+            loadUsers();
+        }
+
+        function showAlert(message) {
+            document.getElementById('alertMessage').textContent = message;
+            const toast = new bootstrap.Toast(document.getElementById('alertToast'));
+            toast.show();
+        }
+
+        async function logout() {
+            try {
+                await axios.post('/api/admin/logout');
+                window.location.href = '/admin/login';
+            } catch (error) {
+                console.error('Logout failed:', error);
+                window.location.href = '/admin/login';
+            }
+        }
+    </script>
+</body>
+
+</html>

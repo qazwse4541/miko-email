@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.site_name}} - 安全可靠的无限邮箱服务</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 100px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="1" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="1" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="1" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+        }
+
+        .feature-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: none;
+            border-radius: 15px;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 2rem;
+        }
+
+        .demo-section {
+            background: #f8f9fa;
+            padding: 80px 0;
+        }
+
+        .stats-section {
+            background: #2c3e50;
+            color: white;
+            padding: 60px 0;
+        }
+
+        .stat-item {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .btn-experience {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(238, 90, 36, 0.3);
+        }
+
+        .btn-experience:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(238, 90, 36, 0.4);
+            color: white;
+        }
+
+        .floating-email {
+            position: absolute;
+            animation: float 6s ease-in-out infinite;
+            opacity: 0.1;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm fixed-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/">
+                {{if .site_logo}}
+                <img src="{{.site_logo}}" alt="{{.site_name}}" style="height: 32px; margin-right: 8px;">
+                {{else}}
+                <i class="bi bi-envelope-heart-fill text-primary me-2"></i>
+                {{end}}
+                <span class="text-primary">{{.site_name}}</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link" href="#features">功能特色</a>
+                    <a class="nav-link" href="#demo">立即体验</a>
+                    <a class="nav-link" href="/login">登录</a>
+                    <a class="nav-link btn btn-primary text-white px-3 ms-2" href="/register">注册</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 英雄区域 -->
+    <section class="hero-section">
+        <div class="floating-email" style="top: 10%; left: 10%;">
+            <i class="bi bi-envelope" style="font-size: 3rem;"></i>
+        </div>
+        <div class="floating-email" style="top: 20%; right: 15%; animation-delay: -2s;">
+            <i class="bi bi-envelope-open" style="font-size: 2.5rem;"></i>
+        </div>
+        <div class="floating-email" style="bottom: 30%; left: 20%; animation-delay: -4s;">
+            <i class="bi bi-envelope-check" style="font-size: 2rem;"></i>
+        </div>
+
+        <div class="container position-relative">
+            <div class="row align-items-center min-vh-100">
+                <div class="col-lg-6">
+                    <h1 class="display-3 fw-bold mb-4">
+                        无限可能的
+                        <span class="text-warning">邮箱服务</span>
+                    </h1>
+                    <p class="lead mb-4 fs-4">
+                        {{.site_name}}为您提供安全、可靠、无限制的邮箱服务。
+                        支持创建无限数量的邮箱地址，满足您的各种需求。
+                    </p>
+                    <div class="d-flex flex-wrap gap-3 mb-4">
+                        <span class="badge bg-light text-dark fs-6 px-3 py-2">
+                            <i class="bi bi-check-circle-fill text-success me-1"></i>
+                            无限邮箱地址
+                        </span>
+                        <span class="badge bg-light text-dark fs-6 px-3 py-2">
+                            <i class="bi bi-check-circle-fill text-success me-1"></i>
+                            SMTP/IMAP/POP3
+                        </span>
+                        <span class="badge bg-light text-dark fs-6 px-3 py-2">
+                            <i class="bi bi-check-circle-fill text-success me-1"></i>
+                            安全加密
+                        </span>
+                    </div>
+                    <div class="d-flex flex-wrap gap-3">
+                        <a href="#demo" class="btn btn-experience">
+                            <i class="bi bi-play-circle me-2"></i>
+                            立即体验
+                        </a>
+                        <a href="/register" class="btn btn-light btn-lg px-4">
+                            <i class="bi bi-person-plus me-2"></i>
+                            免费注册
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-6 text-center">
+                    <div class="position-relative">
+                        <i class="bi bi-envelope-heart display-1" style="font-size: 15rem; opacity: 0.9;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 统计数据 -->
+    <section class="stats-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <div class="stat-number">∞</div>
+                        <h5>无限邮箱</h5>
+                        <p class="mb-0">创建任意数量的邮箱地址</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <div class="stat-number">99.9%</div>
+                        <h5>服务可用性</h5>
+                        <p class="mb-0">稳定可靠的邮件服务</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <div class="stat-number">24/7</div>
+                        <h5>全天候服务</h5>
+                        <p class="mb-0">随时随地收发邮件</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <div class="stat-number">0</div>
+                        <h5>使用费用</h5>
+                        <p class="mb-0">完全免费的邮箱服务</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 功能特色 -->
+    <section id="features" class="py-5">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="display-5 fw-bold mb-3">为什么选择 {{.site_name}}？</h2>
+                <p class="lead text-muted">我们提供最专业的邮箱解决方案</p>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-4 col-md-6">
+                    <div class="card feature-card h-100 p-4">
+                        <div class="feature-icon bg-primary text-white">
+                            <i class="bi bi-infinity"></i>
+                        </div>
+                        <h4 class="fw-bold mb-3">无限邮箱地址</h4>
+                        <p class="text-muted">创建无限数量的邮箱地址，为不同用途使用不同的邮箱，保护您的隐私安全。</p>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check text-success me-2"></i>一键创建新邮箱</li>
+                            <li><i class="bi bi-check text-success me-2"></i>自定义邮箱前缀</li>
+                            <li><i class="bi bi-check text-success me-2"></i>批量管理邮箱</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <div class="card feature-card h-100 p-4">
+                        <div class="feature-icon bg-success text-white">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+                        <h4 class="fw-bold mb-3">安全可靠</h4>
+                        <p class="text-muted">采用先进的加密技术和安全协议，确保您的邮件数据安全无忧。</p>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check text-success me-2"></i>端到端加密</li>
+                            <li><i class="bi bi-check text-success me-2"></i>反垃圾邮件</li>
+                            <li><i class="bi bi-check text-success me-2"></i>安全认证</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <div class="card feature-card h-100 p-4">
+                        <div class="feature-icon bg-warning text-white">
+                            <i class="bi bi-lightning-charge"></i>
+                        </div>
+                        <h4 class="fw-bold mb-3">高性能</h4>
+                        <p class="text-muted">高性能服务器架构，确保邮件快速收发，支持大附件传输。</p>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check text-success me-2"></i>毫秒级响应</li>
+                            <li><i class="bi bi-check text-success me-2"></i>大附件支持</li>
+                            <li><i class="bi bi-check text-success me-2"></i>全球CDN加速</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <div class="card feature-card h-100 p-4">
+                        <div class="feature-icon bg-info text-white">
+                            <i class="bi bi-gear-wide-connected"></i>
+                        </div>
+                        <h4 class="fw-bold mb-3">多协议支持</h4>
+                        <p class="text-muted">完整支持SMTP、IMAP、POP3协议，兼容所有主流邮件客户端。</p>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check text-success me-2"></i>SMTP发送</li>
+                            <li><i class="bi bi-check text-success me-2"></i>IMAP同步</li>
+                            <li><i class="bi bi-check text-success me-2"></i>POP3接收</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <div class="card feature-card h-100 p-4">
+                        <div class="feature-icon bg-danger text-white">
+                            <i class="bi bi-phone"></i>
+                        </div>
+                        <h4 class="fw-bold mb-3">多端同步</h4>
+                        <p class="text-muted">支持手机、电脑、平板等多设备同步，随时随地管理您的邮件。</p>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check text-success me-2"></i>实时同步</li>
+                            <li><i class="bi bi-check text-success me-2"></i>离线访问</li>
+                            <li><i class="bi bi-check text-success me-2"></i>跨平台支持</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <div class="card feature-card h-100 p-4">
+                        <div class="feature-icon bg-secondary text-white">
+                            <i class="bi bi-headset"></i>
+                        </div>
+                        <h4 class="fw-bold mb-3">专业支持</h4>
+                        <p class="text-muted">提供专业的技术支持和详细的使用文档，让您轻松上手。</p>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check text-success me-2"></i>24/7技术支持</li>
+                            <li><i class="bi bi-check text-success me-2"></i>详细文档</li>
+                            <li><i class="bi bi-check text-success me-2"></i>视频教程</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 立即体验区域 -->
+    <section id="demo" class="demo-section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h2 class="display-5 fw-bold mb-4">立即体验 {{.site_name}}</h2>
+                    <p class="lead mb-4">
+                        无需复杂配置，注册即可使用。体验无限邮箱地址的便利，
+                        感受安全可靠的邮件服务。
+                    </p>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary text-white rounded-circle p-2 me-3">
+                                    <i class="bi bi-1-circle"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">快速注册</h6>
+                                    <small class="text-muted">30秒完成注册</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-success text-white rounded-circle p-2 me-3">
+                                    <i class="bi bi-2-circle"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">创建邮箱</h6>
+                                    <small class="text-muted">一键创建邮箱地址</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-warning text-white rounded-circle p-2 me-3">
+                                    <i class="bi bi-3-circle"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">配置客户端</h6>
+                                    <small class="text-muted">支持所有邮件客户端</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-info text-white rounded-circle p-2 me-3">
+                                    <i class="bi bi-4-circle"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">开始使用</h6>
+                                    <small class="text-muted">享受无限邮箱服务</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-3">
+                        <a href="/register" class="btn btn-experience">
+                            <i class="bi bi-rocket-takeoff me-2"></i>
+                            立即开始体验
+                        </a>
+                        <a href="/login" class="btn btn-outline-primary btn-lg">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>
+                            已有账号登录
+                        </a>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card shadow-lg border-0">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-gear-fill me-2"></i>
+                                邮件客户端配置信息
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-4">
+                                <div class="col-md-4">
+                                    <div class="text-center p-3 bg-light rounded">
+                                        <i class="bi bi-send text-primary fs-2 mb-2"></i>
+                                        <h6 class="fw-bold">SMTP 发送</h6>
+                                        <p class="small mb-1"><strong>服务器:</strong> localhost</p>
+                                        <p class="small mb-1"><strong>端口:</strong> 25</p>
+                                        <p class="small mb-0"><strong>加密:</strong> 无</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-center p-3 bg-light rounded">
+                                        <i class="bi bi-download text-success fs-2 mb-2"></i>
+                                        <h6 class="fw-bold">IMAP 接收</h6>
+                                        <p class="small mb-1"><strong>服务器:</strong> localhost</p>
+                                        <p class="small mb-1"><strong>端口:</strong> 143</p>
+                                        <p class="small mb-0"><strong>加密:</strong> 无</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-center p-3 bg-light rounded">
+                                        <i class="bi bi-inbox text-warning fs-2 mb-2"></i>
+                                        <h6 class="fw-bold">POP3 接收</h6>
+                                        <p class="small mb-1"><strong>服务器:</strong> localhost</p>
+                                        <p class="small mb-1"><strong>端口:</strong> 110</p>
+                                        <p class="small mb-0"><strong>加密:</strong> 无</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="alert alert-info mt-3 mb-0">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <small>注册后即可获得完整的配置信息和使用指南</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="bg-dark text-light py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 mb-4">
+                    <h5 class="fw-bold mb-3">
+                        {{if .site_logo}}
+                        <img src="{{.site_logo}}" alt="{{.site_name}}" style="height: 24px; margin-right: 8px;">
+                        {{else}}
+                        <i class="bi bi-envelope-heart-fill text-primary me-2"></i>
+                        {{end}}
+                        {{.site_name}}
+                    </h5>
+                    <p class="text-muted">
+                        提供安全、可靠、无限制的邮箱服务，
+                        让您的邮件通信更加便捷高效。
+                    </p>
+                    <div class="d-flex gap-3">
+                        <a href="#" class="text-light"><i class="bi bi-github fs-4"></i></a>
+                        <a href="#" class="text-light"><i class="bi bi-twitter fs-4"></i></a>
+                        <a href="#" class="text-light"><i class="bi bi-envelope fs-4"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="fw-bold mb-3">产品</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="#features" class="text-muted text-decoration-none">功能特色</a></li>
+                        <li><a href="#demo" class="text-muted text-decoration-none">立即体验</a></li>
+                        <li><a href="/register" class="text-muted text-decoration-none">免费注册</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="fw-bold mb-3">支持</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="#" class="text-muted text-decoration-none">使用文档</a></li>
+                        <li><a href="#" class="text-muted text-decoration-none">视频教程</a></li>
+                        <li><a href="#" class="text-muted text-decoration-none">技术支持</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="fw-bold mb-3">公司</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="#" class="text-muted text-decoration-none">关于我们</a></li>
+                        <li><a href="#" class="text-muted text-decoration-none">联系我们</a></li>
+                        <li><a href="#" class="text-muted text-decoration-none">隐私政策</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="fw-bold mb-3">账户</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="/login" class="text-muted text-decoration-none">用户登录</a></li>
+                        <li><a href="/register" class="text-muted text-decoration-none">用户注册</a></li>
+                        <li><a href="/admin/login" class="text-muted text-decoration-none">管理员</a></li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="my-4">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <p class="mb-0 text-muted">{{.copyright}}</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-0 text-muted">
+                        <i class="bi bi-heart-fill text-danger me-1"></i>
+                        Made with love for better email experience
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="/static/js/common.js"></script>
+
+    <script>
+        // 平滑滚动
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // 导航栏滚动效果
+        window.addEventListener('scroll', function () {
+            const navbar = document.querySelector('.navbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('shadow');
+            } else {
+                navbar.classList.remove('shadow');
+            }
+        });
+    </script>
+</body>
+
+</html>

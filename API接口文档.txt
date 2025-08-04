@@ -1,0 +1,511 @@
+===============================================================================
+                           Miko邮箱系统 API接口文档
+===============================================================================
+
+基础信息
+--------
+- 基础URL: http://localhost:8080
+- 内容类型: application/json; charset=utf-8
+- 认证方式: Session Cookie认证
+- 响应格式: JSON
+
+通用响应格式
+------------
+
+成功响应:
+{
+  "success": true,
+  "message": "操作成功",
+  "data": {}
+}
+
+错误响应:
+{
+  "success": false,
+  "message": "错误信息"
+}
+
+===============================================================================
+1. 认证接口
+===============================================================================
+
+1.1 用户登录
+-----------
+URL: POST /api/login
+描述: 用户登录
+请求体:
+{
+  "username": "string",
+  "password": "string"
+}
+响应:
+{
+  "success": true,
+  "message": "登录成功",
+  "data": {
+    "user": {
+      "id": 1,
+      "username": "testuser",
+      "email": "test@example.com",
+      "contribution": 0,
+      "is_admin": false
+    }
+  }
+}
+
+1.2 管理员登录
+-------------
+URL: POST /api/admin/login
+描述: 管理员登录
+请求体: 同用户登录
+响应: 同用户登录（is_admin为true）
+
+1.3 用户注册
+-----------
+URL: POST /api/register
+描述: 用户注册
+请求体:
+{
+  "username": "string",
+  "password": "string",
+  "email": "string",
+  "domain_prefix": "string",
+  "domain_id": 1,
+  "invite_code": "string"
+}
+
+1.4 用户登出
+-----------
+URL: POST /api/logout
+描述: 用户登出
+认证: 需要登录
+
+1.5 获取用户信息
+---------------
+URL: GET /api/profile
+描述: 获取当前用户信息
+认证: 需要登录
+
+1.6 修改密码
+-----------
+URL: PUT /api/profile/password
+描述: 修改用户密码
+认证: 需要登录
+请求体:
+{
+  "old_password": "string",
+  "new_password": "string"
+}
+
+===============================================================================
+2. 邮箱管理接口
+===============================================================================
+
+2.1 获取邮箱列表
+---------------
+URL: GET /api/mailboxes
+描述: 获取用户的邮箱列表
+认证: 需要登录
+
+2.2 创建邮箱
+-----------
+URL: POST /api/mailboxes
+描述: 创建新邮箱
+认证: 需要登录
+请求体:
+{
+  "prefix": "string",
+  "domain_id": 1,
+  "password": "string"
+}
+
+2.3 批量创建邮箱
+---------------
+URL: POST /api/mailboxes/batch
+描述: 批量创建邮箱
+认证: 需要登录
+请求体:
+{
+  "prefixes": ["prefix1", "prefix2"],
+  "domain_id": 1
+}
+
+2.4 获取邮箱密码
+---------------
+URL: GET /api/mailboxes/:id/password
+描述: 获取指定邮箱的密码
+认证: 需要登录
+
+2.5 删除邮箱
+-----------
+URL: DELETE /api/mailboxes/:id
+描述: 删除指定邮箱
+认证: 需要登录
+
+2.6 获取用户统计信息
+-------------------
+URL: GET /api/mailboxes/stats
+描述: 获取用户邮箱统计信息
+认证: 需要登录
+
+===============================================================================
+3. 邮件管理接口
+===============================================================================
+
+3.1 获取邮件列表
+---------------
+URL: GET /api/emails
+描述: 获取邮件列表
+认证: 需要登录
+查询参数:
+  - mailbox: 邮箱地址（可选）
+  - type: 邮件类型（inbox/sent/trash，默认inbox）
+  - page: 页码（默认1）
+  - limit: 每页数量（默认20，最大100）
+
+3.2 获取邮件详情
+---------------
+URL: GET /api/emails/:id
+描述: 获取单个邮件详情
+认证: 需要登录
+查询参数:
+  - mailbox: 邮箱地址（可选）
+
+3.3 发送邮件
+-----------
+URL: POST /api/emails/send
+描述: 发送邮件
+认证: 需要登录
+请求类型: multipart/form-data
+请求参数:
+  - from: 发件人邮箱
+  - to: 收件人邮箱（多个用逗号分隔）
+  - cc: 抄送（可选）
+  - bcc: 密送（可选）
+  - subject: 邮件主题
+  - content: 邮件内容
+  - attachments: 附件文件（可选，最大10MB）
+
+3.4 删除邮件
+-----------
+URL: DELETE /api/emails/:id
+描述: 删除指定邮件
+认证: 需要登录
+
+3.5 标记所有邮件为已读
+---------------------
+URL: PUT /api/emails/mark-all-read
+描述: 标记邮箱中所有邮件为已读
+认证: 需要登录
+查询参数:
+  - mailbox: 邮箱地址（必需）
+
+3.6 获取验证码
+-------------
+URL: GET /api/emails/verification-code
+描述: 从邮件中提取验证码
+认证: 需要登录
+
+===============================================================================
+4. 转发规则接口
+===============================================================================
+
+4.1 获取转发规则列表
+-------------------
+URL: GET /api/forward-rules
+描述: 获取用户的转发规则列表
+认证: 需要登录
+
+4.2 创建转发规则
+---------------
+URL: POST /api/forward-rules
+描述: 创建新的转发规则
+认证: 需要登录
+请求体:
+{
+  "name": "规则名称",
+  "source_mailbox": "source@example.com",
+  "target_email": "target@example.com",
+  "conditions": {
+    "sender": "sender@example.com",
+    "subject_contains": "关键词"
+  },
+  "enabled": true
+}
+
+4.3 获取转发规则详情
+-------------------
+URL: GET /api/forward-rules/:id
+描述: 获取指定转发规则详情
+认证: 需要登录
+
+4.4 更新转发规则
+---------------
+URL: PUT /api/forward-rules/:id
+描述: 更新转发规则
+认证: 需要登录
+请求体: 同创建转发规则
+
+4.5 删除转发规则
+---------------
+URL: DELETE /api/forward-rules/:id
+描述: 删除转发规则
+认证: 需要登录
+
+4.6 切换转发规则状态
+-------------------
+URL: PATCH /api/forward-rules/:id/toggle
+描述: 启用/禁用转发规则
+认证: 需要登录
+请求体:
+{
+  "enabled": true
+}
+
+4.7 测试转发规则
+---------------
+URL: POST /api/forward-rules/:id/test
+描述: 测试转发规则
+认证: 需要登录
+
+4.8 获取转发统计信息
+-------------------
+URL: GET /api/forward-statistics
+描述: 获取转发统计信息
+认证: 需要登录
+
+===============================================================================
+5. 管理员接口
+===============================================================================
+
+5.1 域名管理
+-----------
+
+5.1.1 获取域名列表
+URL: GET /api/admin/domains
+描述: 获取所有域名列表
+认证: 需要管理员权限
+
+5.1.2 创建域名
+URL: POST /api/admin/domains
+描述: 创建新域名
+认证: 需要管理员权限
+
+5.1.3 简化创建域名
+URL: POST /api/admin/domains/simple
+描述: 简化方式创建域名
+认证: 需要管理员权限
+
+5.1.4 更新域名
+URL: PUT /api/admin/domains/:id
+描述: 更新域名信息
+认证: 需要管理员权限
+
+5.1.5 删除域名
+URL: DELETE /api/admin/domains/:id
+描述: 删除域名
+认证: 需要管理员权限
+
+5.1.6 验证域名
+URL: POST /api/admin/domains/:id/verify
+描述: 验证域名配置
+认证: 需要管理员权限
+
+5.1.7 验证发件配置
+URL: POST /api/admin/domains/:id/verify-sender
+描述: 验证域名发件配置
+认证: 需要管理员权限
+
+5.1.8 验证收件配置
+URL: POST /api/admin/domains/:id/verify-receiver
+描述: 验证域名收件配置
+认证: 需要管理员权限
+
+5.2 用户管理
+-----------
+
+5.2.1 获取用户列表
+URL: GET /api/admin/users
+描述: 获取所有用户列表
+认证: 需要管理员权限
+
+5.2.2 获取用户详情
+URL: GET /api/admin/users/:id
+描述: 获取指定用户详情
+认证: 需要管理员权限
+
+5.2.3 获取用户邮箱
+URL: GET /api/admin/users/:id/mailboxes
+描述: 获取指定用户的邮箱列表
+认证: 需要管理员权限
+
+5.2.4 更新用户状态
+URL: PUT /api/admin/users/:id/status
+描述: 更新用户状态
+认证: 需要管理员权限
+
+5.2.5 删除用户
+URL: DELETE /api/admin/users/:id
+描述: 删除用户
+认证: 需要管理员权限
+
+5.3 邮箱管理（管理员）
+---------------------
+
+5.3.1 获取所有邮箱
+URL: GET /api/admin/mailboxes
+描述: 获取所有邮箱列表
+认证: 需要管理员权限
+
+5.3.2 更新邮箱状态
+URL: PUT /api/admin/mailboxes/:id/status
+描述: 更新邮箱状态
+认证: 需要管理员权限
+请求体:
+{
+  "status": "active"  // 或 "suspended"
+}
+
+5.3.3 删除邮箱（管理员）
+URL: DELETE /api/admin/mailboxes/:id
+描述: 管理员删除邮箱
+认证: 需要管理员权限
+
+5.3.4 获取邮箱统计
+URL: GET /api/admin/mailboxes/:id/stats
+描述: 获取邮箱统计信息
+认证: 需要管理员权限
+
+===============================================================================
+6. 公共接口
+===============================================================================
+
+6.1 获取可用域名
+---------------
+URL: GET /api/domains/available
+描述: 获取可用的域名列表
+认证: 无需认证
+
+6.2 获取域名DNS记录
+------------------
+URL: GET /api/domains/dns
+描述: 获取域名DNS配置记录
+认证: 无需认证
+
+6.3 获取DKIM记录
+---------------
+URL: GET /api/domains/dkim
+描述: 获取DKIM配置记录
+认证: 无需认证
+
+===============================================================================
+7. Web页面路由
+===============================================================================
+
+7.1 公共页面
+-----------
+- GET / - 首页
+- GET /login - 登录页面
+- GET /register - 注册页面
+- GET /admin/login - 管理员登录页面
+
+7.2 用户页面（需要登录）
+-----------------------
+- GET /dashboard - 用户仪表板
+- GET /compose - 写邮件页面
+- GET /forward - 转发页面
+- GET /inbox - 收件箱页面
+- GET /sent - 已发送页面
+- GET /settings - 设置页面
+- GET /mailboxes - 邮箱管理页面
+
+7.3 管理员页面（需要管理员权限）
+-------------------------------
+- GET /admin/dashboard - 管理员仪表板
+- GET /admin/users - 用户管理页面
+- GET /admin/mailboxes - 邮箱管理页面
+- GET /admin/domains - 域名管理页面
+
+===============================================================================
+8. 错误码说明
+===============================================================================
+
+- 200 - 请求成功
+- 400 - 请求参数错误
+- 401 - 未认证或认证失败
+- 403 - 权限不足
+- 404 - 资源不存在
+- 500 - 服务器内部错误
+
+===============================================================================
+9. 注意事项
+===============================================================================
+
+1. 所有需要认证的接口都需要先登录获取Session Cookie
+2. 文件上传接口使用multipart/form-data格式
+3. 附件大小限制为10MB
+4. 邮箱前缀格式：只能包含字母、数字、点、横线、下划线，不能以特殊字符开头或结尾
+5. 密码长度至少6位
+6. 分页查询默认每页20条，最大100条
+
+===============================================================================
+10. 示例代码
+===============================================================================
+
+JavaScript示例:
+--------------
+// 登录
+fetch('/api/login', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    username: 'testuser',
+    password: 'password123'
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data));
+
+// 发送邮件
+const formData = new FormData();
+formData.append('from', 'sender@example.com');
+formData.append('to', 'recipient@example.com');
+formData.append('subject', '测试邮件');
+formData.append('content', '这是一封测试邮件');
+
+fetch('/api/emails/send', {
+  method: 'POST',
+  body: formData
+})
+.then(response => response.json())
+.then(data => console.log(data));
+
+cURL示例:
+--------
+# 登录
+curl -X POST http://localhost:8080/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"password123"}' \
+  -c cookies.txt
+
+# 获取邮件列表
+curl -X GET http://localhost:8080/api/emails \
+  -b cookies.txt
+
+# 发送邮件
+curl -X POST http://localhost:8080/api/emails/send \
+  -b cookies.txt \
+  -F "from=sender@example.com" \
+  -F "to=recipient@example.com" \
+  -F "subject=测试邮件" \
+  -F "content=这是一封测试邮件"
+
+===============================================================================
+
+文档版本: v1.0
+最后更新: 2024年12月
+联系方式: 如有问题请联系开发团队
+
+===============================================================================

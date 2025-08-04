@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API调试页面</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>API调试页面</h1>
+    
+    <div>
+        <h2>管理员登录</h2>
+        <button onclick="adminLogin()">管理员登录</button>
+        <div id="loginResult"></div>
+    </div>
+    
+    <div>
+        <h2>获取域名列表</h2>
+        <button onclick="getDomains()">获取域名</button>
+        <div id="domainsResult"></div>
+    </div>
+    
+    <div>
+        <h2>获取用户信息</h2>
+        <button onclick="getProfile()">获取用户信息</button>
+        <div id="profileResult"></div>
+    </div>
+
+    <script>
+        // 管理员登录
+        async function adminLogin() {
+            try {
+                const response = await axios.post('/api/admin/login', {
+                    username: 'kimi11',
+                    password: 'tgx1234561'
+                });
+                
+                document.getElementById('loginResult').innerHTML = 
+                    '<pre>' + JSON.stringify(response.data, null, 2) + '</pre>';
+                console.log('登录响应:', response);
+            } catch (error) {
+                console.error('登录失败:', error);
+                document.getElementById('loginResult').innerHTML = 
+                    '<pre style="color: red;">' + JSON.stringify(error.response?.data || error.message, null, 2) + '</pre>';
+            }
+        }
+        
+        // 获取域名列表
+        async function getDomains() {
+            try {
+                const response = await axios.get('/api/admin/domains');
+                
+                document.getElementById('domainsResult').innerHTML = 
+                    '<pre>' + JSON.stringify(response.data, null, 2) + '</pre>';
+                console.log('域名响应:', response);
+            } catch (error) {
+                console.error('获取域名失败:', error);
+                document.getElementById('domainsResult').innerHTML = 
+                    '<pre style="color: red;">' + JSON.stringify(error.response?.data || error.message, null, 2) + '</pre>';
+            }
+        }
+        
+        // 获取用户信息
+        async function getProfile() {
+            try {
+                const response = await axios.get('/api/profile');
+                
+                document.getElementById('profileResult').innerHTML = 
+                    '<pre>' + JSON.stringify(response.data, null, 2) + '</pre>';
+                console.log('用户信息响应:', response);
+            } catch (error) {
+                console.error('获取用户信息失败:', error);
+                document.getElementById('profileResult').innerHTML = 
+                    '<pre style="color: red;">' + JSON.stringify(error.response?.data || error.message, null, 2) + '</pre>';
+            }
+        }
+        
+        // 配置axios默认设置
+        axios.defaults.withCredentials = true;
+        
+        console.log('调试页面已加载');
+    </script>
+</body>
+</html>

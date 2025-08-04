@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>转邮件 - {{.site_name}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-radius: 0 20px 20px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .sidebar .nav-link {
+            color: #667eea !important;
+            border-radius: 12px;
+            margin: 0.25rem 0;
+            transition: all 0.3s ease;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background: linear-gradient(45deg, #667eea, #764ba2) !important;
+            color: white !important;
+            transform: translateX(5px);
+        }
+        .main-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px 0 0 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        .btn {
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .form-control, .form-select {
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .stats-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-left: 4px solid;
+        }
+        .border-left-primary {
+            border-left-color: #667eea !important;
+        }
+        .border-left-success {
+            border-left-color: #28a745 !important;
+        }
+        .border-left-info {
+            border-left-color: #17a2b8 !important;
+        }
+        .border-left-warning {
+            border-left-color: #ffc107 !important;
+        }
+        .table {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .badge {
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+        }
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row min-vh-100">
+        <!-- 侧边栏 -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="d-flex flex-column h-100 p-3 text-dark">
+                <a href="/dashboard" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none">
+                    {{if .site_logo}}
+                        <img src="{{.site_logo}}" alt="{{.site_name}}" style="height: 32px; margin-right: 8px;">
+                    {{else}}
+                        <i class="bi bi-envelope-heart me-2 text-primary"></i>
+                    {{end}}
+                    <span class="fs-4 fw-bold text-primary">{{.site_name}}</span>
+                </a>
+                <hr>
+                <ul class="nav nav-pills flex-column mb-auto">
+                    <li class="nav-item">
+                        <a href="/dashboard" class="nav-link">
+                            <i class="bi bi-speedometer2 me-2"></i>
+                            仪表板
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/inbox" class="nav-link">
+                            <i class="bi bi-inbox me-2"></i>
+                            收件箱
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/sent" class="nav-link">
+                            <i class="bi bi-send me-2"></i>
+                            已发送
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/compose" class="nav-link">
+                            <i class="bi bi-pencil-square me-2"></i>
+                            写邮件
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/forward" class="nav-link active">
+                            <i class="bi bi-arrow-right-circle me-2"></i>
+                            转邮件
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/mailboxes" class="nav-link">
+                            <i class="bi bi-collection me-2"></i>
+                            邮箱管理
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/settings" class="nav-link">
+                            <i class="bi bi-gear me-2"></i>
+                            设置
+                        </a>
+                    </li>
+                </ul>
+                <hr>
+                <div class="dropdown">
+                    <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle text-primary" id="dropdownUser1" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle me-2"></i>
+                        <strong>{{.username}}</strong>
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li><a class="dropdown-item" href="/settings">个人设置</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="logout()">退出登录</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="container-fluid p-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2 text-primary fw-bold">
+                        <i class="bi bi-arrow-right-circle me-2"></i>邮件转发管理
+                    </h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2">
+                            <button type="button" class="btn btn-sm btn-primary" onclick="addNewForwardRule()">
+                                <i class="bi bi-plus-circle"></i> 新建转发规则
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshForwardRules()">
+                                <i class="bi bi-arrow-clockwise"></i> 刷新
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 转发规则统计 -->
+                <div class="row mb-4">
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card stats-card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                            总转发规则
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalRules">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-list-ul display-4 text-primary"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card stats-card border-left-success shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                            启用规则
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="activeRules">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-check-circle display-4 text-success"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card stats-card border-left-info shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                            今日转发
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="todayForwards">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-envelope-arrow-up display-4 text-info"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card stats-card border-left-warning shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                            总转发量
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalForwards">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-graph-up display-4 text-warning"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 新建/编辑转发规则 -->
+                <div class="card shadow mb-4" id="forwardRuleForm" style="display: none;">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="bi bi-plus-circle me-2"></i><span id="formTitle">新建转发规则</span>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info" role="alert">
+                            <i class="bi bi-info-circle me-2"></i>
+                            设置邮件转发后，发送到您域名邮箱的邮件将自动转发到指定的外部邮箱。
+                        </div>
+                        
+                        <form id="forwardForm">
+                            <input type="hidden" id="ruleId" value="">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="sourceMailbox" class="form-label">源邮箱 (域名邮箱)</label>
+                                    <select class="form-select" id="sourceMailbox" required>
+                                        <option value="">选择要转发的邮箱...</option>
+                                    </select>
+                                    <div class="form-text">选择您要设置转发的域名邮箱</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="targetEmail" class="form-label">目标邮箱 (外部邮箱)</label>
+                                    <input type="email" class="form-control" id="targetEmail" placeholder="target@gmail.com" required>
+                                    <div class="form-text">输入要转发到的外部邮箱地址</div>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="forwardEnabled" checked>
+                                        <label class="form-check-label" for="forwardEnabled">
+                                            启用转发
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="keepOriginal" checked>
+                                        <label class="form-check-label" for="keepOriginal">
+                                            保留原邮件副本
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="forwardAttachments" checked>
+                                        <label class="form-check-label" for="forwardAttachments">
+                                            转发附件
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="forwardSubjectPrefix" class="form-label">转发主题前缀 (可选)</label>
+                                <input type="text" class="form-control" id="forwardSubjectPrefix" placeholder="[转发]" value="[转发]">
+                                <div class="form-text">在转发邮件主题前添加的前缀</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="forwardDescription" class="form-label">规则描述 (可选)</label>
+                                <textarea class="form-control" id="forwardDescription" rows="2" placeholder="描述这个转发规则的用途..."></textarea>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <button type="submit" class="btn btn-success me-2">
+                                        <i class="bi bi-check-circle"></i> 保存转发规则
+                                    </button>
+                                    <button type="button" class="btn btn-outline-info" onclick="testForwardRuleInEdit()">
+                                        <i class="bi bi-envelope-check"></i> 测试转发
+                                    </button>
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="cancelEdit()">
+                                        <i class="bi bi-x-circle"></i> 取消
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 转发规则列表 -->
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="bi bi-list-ul me-2"></i>转发规则列表
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>源邮箱</th>
+                                        <th>目标邮箱</th>
+                                        <th>状态</th>
+                                        <th>保留副本</th>
+                                        <th>转发次数</th>
+                                        <th>创建时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="forwardRulesTableBody">
+                                    <!-- 动态加载转发规则 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 空状态 -->
+                        <div id="emptyState" class="text-center py-5" style="display: none;">
+                            <i class="bi bi-inbox display-1 text-muted"></i>
+                            <h5 class="text-muted mt-3">暂无转发规则</h5>
+                            <p class="text-muted">点击上方"新建转发规则"按钮创建您的第一个转发规则</p>
+                            <button type="button" class="btn btn-primary" onclick="addNewForwardRule()">
+                                <i class="bi bi-plus-circle"></i> 新建转发规则
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 测试转发模态框 -->
+<div class="modal fade" id="testModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">测试转发</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>将发送一封测试邮件来验证转发规则是否正常工作。</p>
+                <div class="mb-3">
+                    <label for="testSubject" class="form-label">测试邮件主题</label>
+                    <input type="text" class="form-control" id="testSubject" value="转发规则测试邮件">
+                </div>
+                <div class="mb-3">
+                    <label for="testContent" class="form-label">测试邮件内容</label>
+                    <textarea class="form-control" id="testContent" rows="3">这是一封测试邮件，用于验证邮件转发功能是否正常工作。</textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="sendTestEmail()">发送测试邮件</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 提示模态框 -->
+<div class="modal fade" id="alertModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">提示</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="alertMessage">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="/static/js/common.js"></script>
+<script>
+let currentEditingRuleId = null;
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadMailboxes();
+    loadForwardRules();
+    loadStatistics();
+    initForwardForm();
+});
+
+// 初始化转发表单
+function initForwardForm() {
+    document.getElementById('forwardForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveForwardRule();
+    });
+}
+
+// 加载邮箱列表
+async function loadMailboxes() {
+    try {
+        const response = await axios.get('/api/mailboxes');
+        if (response.data.success) {
+            const mailboxes = response.data.data;
+            const sourceSelect = document.getElementById('sourceMailbox');
+            sourceSelect.innerHTML = '<option value="">选择要转发的邮箱...</option>';
+
+            mailboxes.forEach(mailbox => {
+                const option = document.createElement('option');
+                option.value = mailbox.email;
+                option.textContent = mailbox.email;
+                sourceSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Failed to load mailboxes:', error);
+        showAlert('加载邮箱列表失败');
+    }
+}
+
+// 加载转发规则
+async function loadForwardRules() {
+    try {
+        const response = await axios.get('/api/forward-rules');
+        if (response.data.success) {
+            const rules = response.data.data || [];
+            renderForwardRules(rules);
+        } else {
+            showAlert('加载转发规则失败: ' + response.data.message);
+        }
+    } catch (error) {
+        console.error('Failed to load forward rules:', error);
+        // 如果API不存在，显示空状态
+        renderForwardRules([]);
+    }
+}
+
+// 渲染转发规则列表
+function renderForwardRules(rules) {
+    const tbody = document.getElementById('forwardRulesTableBody');
+    const emptyState = document.getElementById('emptyState');
+
+    if (rules.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.style.display = 'block';
+        return;
+    }
+
+    emptyState.style.display = 'none';
+
+    tbody.innerHTML = rules.map(rule => `
+        <tr>
+            <td>
+                <i class="bi bi-envelope me-2"></i>
+                ${rule.source_email}
+            </td>
+            <td>
+                <i class="bi bi-arrow-right me-2"></i>
+                ${rule.target_email}
+            </td>
+            <td>
+                <span class="badge ${rule.enabled ? 'bg-success' : 'bg-secondary'}">
+                    <i class="bi ${rule.enabled ? 'bi-check-circle' : 'bi-pause-circle'} me-1"></i>
+                    ${rule.enabled ? '启用' : '禁用'}
+                </span>
+            </td>
+            <td>
+                <span class="badge ${rule.keep_original ? 'bg-info' : 'bg-warning'}">
+                    <i class="bi ${rule.keep_original ? 'bi-archive' : 'bi-trash'} me-1"></i>
+                    ${rule.keep_original ? '保留' : '删除'}
+                </span>
+            </td>
+            <td>
+                <span class="badge bg-primary">${rule.forward_count || 0}</span>
+            </td>
+            <td>${new Date(rule.created_at).toLocaleString('zh-CN')}</td>
+            <td>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-primary" onclick="editForwardRule(${rule.id})" title="编辑">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-${rule.enabled ? 'warning' : 'success'}"
+                            onclick="toggleForwardRule(${rule.id}, ${!rule.enabled})"
+                            title="${rule.enabled ? '禁用' : '启用'}">
+                        <i class="bi bi-${rule.enabled ? 'pause' : 'play'}"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-info" onclick="testForwardRule(${rule.id})" title="测试">
+                        <i class="bi bi-envelope-check"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" onclick="deleteForwardRule(${rule.id})" title="删除">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// 加载统计信息
+async function loadStatistics() {
+    try {
+        const response = await axios.get('/api/forward-statistics');
+        if (response.data.success) {
+            const stats = response.data.data;
+            document.getElementById('totalRules').textContent = stats.total_rules || 0;
+            document.getElementById('activeRules').textContent = stats.active_rules || 0;
+            document.getElementById('todayForwards').textContent = stats.today_forwards || 0;
+            document.getElementById('totalForwards').textContent = stats.total_forwards || 0;
+        }
+    } catch (error) {
+        console.error('Failed to load statistics:', error);
+        // 设置默认值
+        document.getElementById('totalRules').textContent = '0';
+        document.getElementById('activeRules').textContent = '0';
+        document.getElementById('todayForwards').textContent = '0';
+        document.getElementById('totalForwards').textContent = '0';
+    }
+}
+
+// 显示新建转发规则表单
+function addNewForwardRule() {
+    currentEditingRuleId = null;
+    document.getElementById('formTitle').textContent = '新建转发规则';
+    document.getElementById('ruleId').value = '';
+    document.getElementById('forwardForm').reset();
+    document.getElementById('forwardEnabled').checked = true;
+    document.getElementById('keepOriginal').checked = true;
+    document.getElementById('forwardAttachments').checked = true;
+    document.getElementById('forwardSubjectPrefix').value = '[转发]';
+    document.getElementById('forwardRuleForm').style.display = 'block';
+
+    // 滚动到表单
+    document.getElementById('forwardRuleForm').scrollIntoView({ behavior: 'smooth' });
+}
+
+// 编辑转发规则
+async function editForwardRule(ruleId) {
+    try {
+        const response = await axios.get(`/api/forward-rules/${ruleId}`);
+        if (response.data.success) {
+            const rule = response.data.data;
+            currentEditingRuleId = ruleId;
+
+            document.getElementById('formTitle').textContent = '编辑转发规则';
+            document.getElementById('ruleId').value = ruleId;
+            document.getElementById('sourceMailbox').value = rule.source_email;
+            document.getElementById('targetEmail').value = rule.target_email;
+            document.getElementById('forwardEnabled').checked = rule.enabled;
+            document.getElementById('keepOriginal').checked = rule.keep_original;
+            document.getElementById('forwardAttachments').checked = rule.forward_attachments;
+            document.getElementById('forwardSubjectPrefix').value = rule.subject_prefix || '[转发]';
+            document.getElementById('forwardDescription').value = rule.description || '';
+
+            document.getElementById('forwardRuleForm').style.display = 'block';
+            document.getElementById('forwardRuleForm').scrollIntoView({ behavior: 'smooth' });
+        } else {
+            showAlert('加载转发规则失败: ' + response.data.message);
+        }
+    } catch (error) {
+        console.error('Failed to load forward rule:', error);
+        showAlert('加载转发规则失败');
+    }
+}
+
+// 保存转发规则
+async function saveForwardRule() {
+    const formData = {
+        source_email: document.getElementById('sourceMailbox').value,
+        target_email: document.getElementById('targetEmail').value,
+        enabled: document.getElementById('forwardEnabled').checked,
+        keep_original: document.getElementById('keepOriginal').checked,
+        forward_attachments: document.getElementById('forwardAttachments').checked,
+        subject_prefix: document.getElementById('forwardSubjectPrefix').value,
+        description: document.getElementById('forwardDescription').value
+    };
+
+    try {
+        let response;
+        if (currentEditingRuleId) {
+            response = await axios.put(`/api/forward-rules/${currentEditingRuleId}`, formData);
+        } else {
+            response = await axios.post('/api/forward-rules', formData);
+        }
+
+        if (response.data.success) {
+            showAlert(currentEditingRuleId ? '转发规则更新成功！' : '转发规则创建成功！');
+            cancelEdit();
+            loadForwardRules();
+            loadStatistics();
+        } else {
+            showAlert(response.data.message || '保存转发规则失败');
+        }
+    } catch (error) {
+        console.error('Failed to save forward rule:', error);
+        if (error.response && error.response.data) {
+            showAlert(error.response.data.message || '保存转发规则失败');
+        } else {
+            showAlert('网络错误，请稍后重试');
+        }
+    }
+}
+
+// 取消编辑
+function cancelEdit() {
+    currentEditingRuleId = null;
+    document.getElementById('forwardRuleForm').style.display = 'none';
+    document.getElementById('forwardForm').reset();
+}
+
+// 切换转发规则状态
+async function toggleForwardRule(ruleId, enabled) {
+    try {
+        const response = await axios.patch(`/api/forward-rules/${ruleId}/toggle`, { enabled });
+        if (response.data.success) {
+            showAlert(`转发规则已${enabled ? '启用' : '禁用'}`);
+            loadForwardRules();
+            loadStatistics();
+        } else {
+            showAlert(response.data.message || '操作失败');
+        }
+    } catch (error) {
+        console.error('Failed to toggle forward rule:', error);
+        showAlert('操作失败，请稍后重试');
+    }
+}
+
+// 删除转发规则
+function deleteForwardRule(ruleId) {
+    if (confirm('确定要删除这个转发规则吗？')) {
+        performDeleteForwardRule(ruleId);
+    }
+}
+
+async function performDeleteForwardRule(ruleId) {
+    try {
+        const response = await axios.delete(`/api/forward-rules/${ruleId}`);
+        if (response.data.success) {
+            showAlert('转发规则删除成功！');
+            loadForwardRules();
+            loadStatistics();
+        } else {
+            showAlert(response.data.message || '删除转发规则失败');
+        }
+    } catch (error) {
+        console.error('Failed to delete forward rule:', error);
+        showAlert('删除失败，请稍后重试');
+    }
+}
+
+// 测试转发规则
+function testForwardRule(ruleId) {
+    const modal = new bootstrap.Modal(document.getElementById('testModal'));
+    modal.show();
+    window.currentTestRuleId = ruleId;
+}
+
+// 在编辑表单中测试转发规则
+function testForwardRuleInEdit() {
+    if (!currentEditingRuleId) {
+        showAlert('请先保存转发规则后再进行测试');
+        return;
+    }
+    testForwardRule(currentEditingRuleId);
+}
+
+// 发送测试邮件
+async function sendTestEmail() {
+    const subject = document.getElementById('testSubject').value;
+    const content = document.getElementById('testContent').value;
+
+    try {
+        const response = await axios.post(`/api/forward-rules/${window.currentTestRuleId}/test`, {
+            subject,
+            content
+        });
+
+        if (response.data.success) {
+            showAlert('测试邮件发送成功！请检查目标邮箱。');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('testModal'));
+            modal.hide();
+        } else {
+            showAlert(response.data.message || '测试邮件发送失败');
+        }
+    } catch (error) {
+        console.error('Failed to send test email:', error);
+        showAlert('测试邮件发送失败，请稍后重试');
+    }
+}
+
+// 刷新转发规则
+function refreshForwardRules() {
+    loadForwardRules();
+    loadStatistics();
+    showAlert('数据已刷新');
+}
+
+// 显示提示信息
+function showAlert(message) {
+    document.getElementById('alertMessage').textContent = message;
+    const modal = new bootstrap.Modal(document.getElementById('alertModal'));
+    modal.show();
+}
+
+// 退出登录
+async function logout() {
+    try {
+        await axios.post('/api/logout');
+        window.location.href = '/login';
+    } catch (error) {
+        console.error('Logout error:', error);
+        window.location.href = '/login';
+    }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,467 @@
+===============================================================================
+                            Miko邮箱系统部署指南
+===============================================================================
+
+版本: v1.0
+更新时间: 2025-01-24
+作者: Miko Team (QQ: 2014131458)
+
+===============================================================================
+目录
+===============================================================================
+
+1. 系统要求
+2. 环境准备
+3. 源码部署
+4. Docker部署
+5. 配置说明
+6. 启动服务
+7. 验证部署
+8. 常见问题
+9. 安全配置
+10. 性能优化
+
+===============================================================================
+1. 系统要求
+===============================================================================
+
+最低配置:
+- CPU: 1核心
+- 内存: 512MB
+- 磁盘: 1GB可用空间
+- 操作系统: Linux/Windows/macOS
+
+推荐配置:
+- CPU: 2核心或以上
+- 内存: 2GB或以上
+- 磁盘: 10GB可用空间
+- 操作系统: Ubuntu 20.04+ / CentOS 7+ / Windows 10+
+
+软件依赖:
+- Go 1.21或更高版本
+- Git (用于克隆代码)
+- 现代浏览器 (Chrome/Firefox/Safari/Edge)
+
+===============================================================================
+2. 环境准备
+===============================================================================
+
+2.1 安装Go语言环境
+
+Linux/macOS:
+```bash
+wget https://golang.org/dl/go1.21.0.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.21.0.linux-amd64.tar.gz
+export PATH=$PATH:/usr/local/go/bin
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+source ~/.bashrc
+```
+
+Windows:
+1. 下载Go安装包: https://golang.org/dl/
+2. 运行安装程序
+3. 配置环境变量GOPATH和GOROOT
+
+2.2 验证Go安装
+```bash
+go version
+```
+
+2.3 配置Go模块代理(可选)
+```bash
+go env -w GOPROXY=https://goproxy.cn,direct
+go env -w GOSUMDB=sum.golang.google.cn
+```
+
+===============================================================================
+3. 源码部署
+===============================================================================
+
+3.1 克隆项目
+```bash
+git clone <repository-url>
+cd miko邮箱
+```
+
+3.2 安装依赖
+```bash
+go mod tidy
+```
+
+3.3 编译项目
+```bash
+# 编译当前平台
+go build -o miko-email main.go
+
+# 交叉编译Linux版本
+GOOS=linux GOARCH=amd64 go build -o miko-email-linux main.go
+
+# 交叉编译Windows版本
+GOOS=windows GOARCH=amd64 go build -o miko-email.exe main.go
+```
+
+3.4 创建必要目录
+```bash
+mkdir -p logs
+mkdir -p data
+mkdir -p dkim_keys
+```
+
+===============================================================================
+4. Docker部署
+===============================================================================
+
+4.1 创建Dockerfile
+```dockerfile
+FROM golang:1.21-alpine AS builder
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN go build -o miko-email main.go
+
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+
+COPY --from=builder /app/miko-email .
+COPY --from=builder /app/web ./web
+COPY --from=builder /app/config.yaml .
+
+EXPOSE 8080 25 143 110
+
+CMD ["./miko-email"]
+```
+
+4.2 构建Docker镜像
+```bash
+docker build -t miko-email:latest .
+```
+
+4.3 运行Docker容器
+```bash
+docker run -d \
+  --name miko-email \
+  -p 8080:8080 \
+  -p 25:25 \
+  -p 143:143 \
+  -p 110:110 \
+  -v $(pwd)/data:/root/data \
+  -v $(pwd)/logs:/root/logs \
+  miko-email:latest
+```
+
+4.4 Docker Compose部署
+```yaml
+version: '3.8'
+services:
+  miko-email:
+    build: .
+    ports:
+      - "8080:8080"
+      - "25:25"
+      - "143:143"
+      - "110:110"
+    volumes:
+      - ./data:/root/data
+      - ./logs:/root/logs
+      - ./config.yaml:/root/config.yaml
+    restart: unless-stopped
+```
+
+===============================================================================
+5. 配置说明
+===============================================================================
+
+5.1 基础配置 (config.yaml)
+```yaml
+server:
+  web_port: 8080
+  smtp:
+    enable_multi_port: true
+    port_25: 25
+    port_587: 587
+    port_465: 465
+  imap:
+    port: 143
+  pop3:
+    port: 110
+
+database:
+  path: "./data/miko_email.db"
+  debug: false
+
+security:
+  session_key: "your-secret-session-key"
+  jwt_secret: "your-jwt-secret-key"
+  session_timeout: 24
+
+email:
+  max_size: 25
+  max_mailboxes_per_user: 10
+  enable_forwarding: true
+
+admin:
+  username: "admin"
+  password: "123456"
+  email: "2014131458@qq.com"
+```
+
+5.2 环境变量配置
+```bash
+export WEB_PORT=8080
+export SMTP_PORT=25
+export IMAP_PORT=143
+export POP3_PORT=110
+export DATABASE_PATH=./data/miko_email.db
+export DOMAIN=yourdomain.com
+```
+
+5.3 防火墙配置
+
+Linux (iptables):
+```bash
+# 开放Web端口
+sudo iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
+
+# 开放邮件端口
+sudo iptables -A INPUT -p tcp --dport 25 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 143 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 110 -j ACCEPT
+
+# 保存规则
+sudo iptables-save > /etc/iptables/rules.v4
+```
+
+Linux (firewalld):
+```bash
+sudo firewall-cmd --permanent --add-port=8080/tcp
+sudo firewall-cmd --permanent --add-port=25/tcp
+sudo firewall-cmd --permanent --add-port=143/tcp
+sudo firewall-cmd --permanent --add-port=110/tcp
+sudo firewall-cmd --reload
+```
+
+===============================================================================
+6. 启动服务
+===============================================================================
+
+6.1 直接启动
+```bash
+# 前台运行
+./miko-email
+
+# 后台运行
+nohup ./miko-email > logs/app.log 2>&1 &
+```
+
+6.2 使用systemd管理 (Linux)
+
+创建服务文件 /etc/systemd/system/miko-email.service:
+```ini
+[Unit]
+Description=Miko Email Server
+After=network.target
+
+[Service]
+Type=simple
+User=miko
+WorkingDirectory=/opt/miko-email
+ExecStart=/opt/miko-email/miko-email
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+启动服务:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable miko-email
+sudo systemctl start miko-email
+sudo systemctl status miko-email
+```
+
+6.3 Windows服务安装
+使用NSSM工具将程序注册为Windows服务:
+```cmd
+nssm install MikoEmail
+nssm set MikoEmail Application "C:\miko-email\miko-email.exe"
+nssm set MikoEmail AppDirectory "C:\miko-email"
+nssm start MikoEmail
+```
+
+===============================================================================
+7. 验证部署
+===============================================================================
+
+7.1 检查服务状态
+```bash
+# 检查端口监听
+netstat -tlnp | grep -E ':(8080|25|143|110)'
+
+# 检查进程
+ps aux | grep miko-email
+```
+
+7.2 Web界面测试
+1. 打开浏览器访问: http://localhost:8080
+2. 使用管理员账号登录: admin / 123456
+3. 检查各功能模块是否正常
+
+7.3 邮件协议测试
+
+SMTP测试:
+```bash
+telnet localhost 25
+HELO test.com
+MAIL FROM: test@test.com
+RCPT TO: user@yourdomain.com
+DATA
+Subject: Test Email
+
+This is a test email.
+.
+QUIT
+```
+
+IMAP测试:
+```bash
+telnet localhost 143
+a1 LOGIN username password
+a2 LIST "" "*"
+a3 SELECT INBOX
+a4 LOGOUT
+```
+
+===============================================================================
+8. 常见问题
+===============================================================================
+
+8.1 端口被占用
+问题: 启动时提示端口已被使用
+解决: 
+```bash
+# 查找占用端口的进程
+lsof -i :8080
+# 或
+netstat -tlnp | grep 8080
+
+# 杀死占用进程
+kill -9 <PID>
+```
+
+8.2 权限问题
+问题: 无法绑定25端口 (Linux)
+解决:
+```bash
+# 方法1: 使用sudo运行
+sudo ./miko-email
+
+# 方法2: 设置capabilities
+sudo setcap 'cap_net_bind_service=+ep' ./miko-email
+```
+
+8.3 数据库初始化失败
+问题: SQLite数据库创建失败
+解决:
+```bash
+# 检查目录权限
+ls -la data/
+
+# 创建数据目录
+mkdir -p data
+chmod 755 data
+```
+
+8.4 Go模块下载失败
+问题: go mod tidy 失败
+解决:
+```bash
+# 设置代理
+go env -w GOPROXY=https://goproxy.cn,direct
+
+# 清理模块缓存
+go clean -modcache
+go mod tidy
+```
+
+===============================================================================
+9. 安全配置
+===============================================================================
+
+9.1 SSL/TLS配置
+```yaml
+server:
+  tls:
+    enable: true
+    cert_file: "/path/to/cert.pem"
+    key_file: "/path/to/key.pem"
+```
+
+9.2 访问控制
+```yaml
+security:
+  allowed_ips:
+    - "192.168.1.0/24"
+    - "10.0.0.0/8"
+  rate_limit:
+    enable: true
+    requests_per_minute: 60
+```
+
+9.3 密码策略
+```yaml
+security:
+  password_policy:
+    min_length: 8
+    require_uppercase: true
+    require_lowercase: true
+    require_numbers: true
+    require_symbols: true
+```
+
+===============================================================================
+10. 性能优化
+===============================================================================
+
+10.1 数据库优化
+```yaml
+database:
+  max_connections: 100
+  connection_timeout: 30
+  enable_wal: true
+```
+
+10.2 缓存配置
+```yaml
+cache:
+  enable: true
+  type: "memory"
+  ttl: 3600
+  max_size: 1000
+```
+
+10.3 日志配置
+```yaml
+logging:
+  level: "info"
+  file: "logs/app.log"
+  max_size: 100
+  max_backups: 10
+  max_age: 30
+```
+
+===============================================================================
+联系支持
+===============================================================================
+
+如果在部署过程中遇到问题，请联系:
+- QQ: 2014131458
+- 邮箱: 2014131458@qq.com
+- 项目地址: https://github.com/your-repo/miko-email
+
+===============================================================================

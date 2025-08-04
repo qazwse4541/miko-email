@@ -1,0 +1,71 @@
+server:
+    web_port: 8080
+    smtp:
+        enable_multi_port: true
+        port_25: 25
+        port_587: 587
+        port_465: 465
+    imap:
+        port: 143
+        secure_port: 993
+    pop3:
+        port: 110
+        secure_port: 995
+admin:
+    username: admin
+    password: tgx123456
+    email: 2014131458@qq.com
+    enabled: true
+database:
+    path: ./miko_email.db
+    debug: false
+domain:
+    default: jbjj.site
+    smtp_hostname: ""
+    allowed: []
+    enable_domain_restriction: false
+security:
+    session_key: miko-email-secret-key-change-in-production
+    jwt_secret: miko-email-jwt-secret-key
+    session_timeout: 24
+    enable_https: false
+    ssl_cert: ""
+    ssl_key: ""
+email:
+    max_size: 25
+    max_mailboxes_per_user: 10
+    retention_days: 0
+    enable_forwarding: true
+smtp_sender:
+    host: smtp.163.com
+    port: 465
+    username: 18090776855@163.com
+    password: JTH39ZMMBTennqeQ
+    secure: ssl
+    from_name: YouDDNS
+logging:
+    level: info
+    to_file: false
+    file_path: ./logs/miko_email.log
+    access_log: true
+performance:
+    max_connections: 1000
+    read_timeout: 30
+    write_timeout: 30
+    idle_timeout: 120
+features:
+    allow_registration: false
+    enable_search: true
+    enable_attachments: true
+    enable_spam_filter: false
+system:
+    site_name: 思.凡邮箱系统
+    site_logo: ""
+    site_description: 专业的邮箱管理系统
+    site_keywords: 邮箱,邮件,管理系统
+    copyright: © 2024 Miko邮箱系统. All rights reserved.
+    contact_email: 2014131458@qq.com
+    allow_self_registration: false
+    default_mailbox_quota: 1000
+    maintenance_mode: true
+    maintenance_message: 系统正在维护中，请稍后访问

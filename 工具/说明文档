@@ -1,0 +1,4 @@
+go run tools/config_manager.go admin 查看管理员账号密码配置
+go run tools/sync_admin.go sync 修改管理员密码的
+./tools/config_managerls admin
+./tools/sync_admin sync

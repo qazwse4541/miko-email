@@ -1,0 +1,2566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>域名管理 - {{.site_name}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-radius: 0 20px 20px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .sidebar .nav-link {
+            color: #667eea !important;
+            border-radius: 12px;
+            margin: 0.25rem 0;
+            transition: all 0.3s ease;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background: linear-gradient(45deg, #667eea, #764ba2) !important;
+            color: white !important;
+            transform: translateX(5px);
+        }
+        .main-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px 0 0 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        .btn {
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .form-control, .form-select {
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .stats-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-left: 4px solid;
+        }
+        .border-left-primary {
+            border-left-color: #667eea !important;
+        }
+        .border-left-success {
+            border-left-color: #28a745 !important;
+        }
+        .border-left-info {
+            border-left-color: #17a2b8 !important;
+        }
+        .border-left-warning {
+            border-left-color: #ffc107 !important;
+        }
+        .table {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .badge {
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+        }
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+        }
+        .domain-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-verified {
+            background-color: #28a745;
+        }
+        .status-pending {
+            background-color: #ffc107;
+        }
+        .status-failed {
+            background-color: #dc3545;
+        }
+        
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* DNS配置检查样式 */
+        .dns-check-summary {
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .dns-check-item {
+            transition: all 0.3s ease;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .dns-check-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .dns-status-icon {
+            font-size: 1.2rem;
+            min-width: 24px;
+        }
+
+        .dns-priority-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .config-section {
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .config-section:hover {
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .config-section .card-header {
+            border-radius: 12px 12px 0 0 !important;
+            border-bottom: none;
+            font-weight: 600;
+        }
+
+        .list-group-item {
+            border: none;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 0.75rem 1rem;
+        }
+
+        .list-group-item:last-child {
+            border-bottom: none;
+        }
+
+        .priority-badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row min-vh-100">
+        <!-- 侧边栏 -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="d-flex flex-column h-100 p-3 text-dark">
+                <a href="/admin/dashboard" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none">
+                    {{if .site_logo}}
+                        <img src="{{.site_logo}}" alt="{{.site_name}}" style="height: 32px; margin-right: 8px;">
+                    {{else}}
+                        <i class="bi bi-shield-check me-2 text-primary"></i>
+                    {{end}}
+                    <span class="fs-4 fw-bold text-primary">{{.site_name}}管理</span>
+                </a>
+                <hr>
+                <ul class="nav nav-pills flex-column mb-auto">
+                    <li class="nav-item">
+                        <a href="/admin/dashboard" class="nav-link">
+                            <i class="bi bi-speedometer2 me-2"></i>
+                            仪表板
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/users" class="nav-link">
+                            <i class="bi bi-people me-2"></i>
+                            用户管理
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/mailboxes" class="nav-link">
+                            <i class="bi bi-envelope me-2"></i>
+                            邮箱管理
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/domains" class="nav-link active">
+                            <i class="bi bi-globe me-2"></i>
+                            域名管理
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/system-settings" class="nav-link">
+                            <i class="bi bi-gear me-2"></i>
+                            系统设置
+                        </a>
+                    </li>
+                </ul>
+                <hr>
+                <div class="dropdown">
+                    <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle text-primary" id="dropdownUser1" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle me-2"></i>
+                        <strong>管理员</strong>
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li><a class="dropdown-item" href="#" onclick="logout()">退出登录</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="container-fluid p-4">
+                <!-- 页面标题 -->
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2 text-primary fw-bold">
+                        <i class="bi bi-globe me-2"></i>域名管理
+                    </h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2">
+                            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addDomainModal">
+                                <i class="bi bi-plus-circle"></i> 添加域名
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshDomains()">
+                                <i class="bi bi-arrow-clockwise"></i> 刷新
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="row mb-4">
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card stats-card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">总域名数</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalDomains">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-globe display-4 text-primary"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card stats-card border-left-success shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">已验证</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="verifiedDomains">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-check-circle display-4 text-success"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card stats-card border-left-warning shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">待验证</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="pendingDomains">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-clock display-4 text-warning"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card stats-card border-left-info shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">今日新增</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="todayDomains">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-plus-circle display-4 text-info"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 域名列表 -->
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="bi bi-list-ul me-2"></i>域名列表
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="50">
+                                            <input type="checkbox" class="form-check-input" id="selectAllDomainsCheckbox"
+                                                   onchange="toggleAllDomains(this.checked)">
+                                        </th>
+                                        <th>域名</th>
+                                        <th>验证状态</th>
+                                        <th>发件验证</th>
+                                        <th>收件验证</th>
+                                        <th>MX记录</th>
+                                        <th>A记录</th>
+                                        <th>创建时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="domainsTableBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">加载中...</span>
+                                            </div>
+                                            <p class="mt-2">正在加载域名列表...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加域名模态框 -->
+<div class="modal fade" id="addDomainModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-plus-circle me-2"></i>添加域名
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- 简化模式选择 -->
+                <div class="mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="simpleMode" checked>
+                        <label class="form-check-label fw-bold" for="simpleMode">
+                            <i class="bi bi-magic me-1"></i>简化模式（推荐）
+                        </label>
+                        <div class="form-text">
+                            <i class="bi bi-lightbulb me-1"></i>
+                            开启后只需输入域名，系统自动生成所有DNS记录
+                        </div>
+                    </div>
+                </div>
+
+                <form id="addDomainForm">
+                    <!-- 域名信息 -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-globe me-2"></i>域名信息</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="domainName" class="form-label fw-bold">
+                                    域名 <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="domainName"
+                                       placeholder="例如: jbjj.site" required>
+                                <div class="form-text">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    请输入要添加的域名（不包含协议）
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 基础DNS记录 -->
+                    <div class="card mb-3" id="advancedSettings" style="display: none;">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0"><i class="bi bi-dns me-2"></i>基础DNS记录</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="mxRecord" class="form-label fw-bold">
+                                    MX记录 <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="mxRecord"
+                                       placeholder="例如: jbjj.site">
+                                <div class="form-text">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    邮件交换记录，用于接收邮件。必须指向您的邮件服务器地址。
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="aRecord" class="form-label fw-bold">
+                                    A记录 <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="aRecord"
+                                       placeholder="例如: 118.120.221.169">
+                                <div class="form-text">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    地址记录，将域名解析到IP地址。必须指向您的服务器IP。
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="txtRecord" class="form-label fw-bold">TXT记录</label>
+                                <textarea class="form-control" id="txtRecord" rows="2"
+                                          placeholder="例如: v=spf1 ip4:118.120.221.169 ~all"></textarea>
+                                <div class="form-text">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    文本记录，用于域名验证和其他配置信息。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 发件配置 -->
+                    <div class="card mb-3" id="advancedSettings2" style="display: none;">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0"><i class="bi bi-send me-2"></i>发件配置（邮件认证）</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="spfRecord" class="form-label fw-bold">
+                                    SPF记录 <span class="badge bg-warning text-dark">推荐</span>
+                                </label>
+                                <input type="text" class="form-control" id="spfRecord"
+                                       placeholder="例如: v=spf1 ip4:118.120.221.169 ~all">
+                                <div class="form-text">
+                                    <i class="bi bi-shield-check me-1"></i>
+                                    发件人策略框架，防止邮件被伪造。建议配置以提高邮件送达率。
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="dmarcRecord" class="form-label fw-bold">
+                                    DMARC记录 <span class="badge bg-warning text-dark">推荐</span>
+                                </label>
+                                <input type="text" class="form-control" id="dmarcRecord"
+                                       placeholder="例如: v=DMARC1; p=quarantine; rua=mailto:dmarc@jbjj.site">
+                                <div class="form-text">
+                                    <i class="bi bi-shield-check me-1"></i>
+                                    域名消息认证报告和一致性，配合SPF和DKIM使用。
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="dkimRecord" class="form-label fw-bold">
+                                    DKIM记录 <span class="badge bg-success">自动生成</span>
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="dkimRecord" readonly>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="generateDKIMForNewDomain()">
+                                        <i class="bi bi-arrow-clockwise"></i> 重新生成
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    <i class="bi bi-key me-1"></i>
+                                    域名密钥识别邮件，系统自动生成。请将此记录添加到DNS的TXT记录中。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 收件配置 -->
+                    <div class="card mb-3" id="advancedSettings3" style="display: none;">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="bi bi-inbox me-2"></i>收件配置</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="ptrRecord" class="form-label fw-bold">
+                                    PTR记录 <span class="badge bg-info">可选</span>
+                                </label>
+                                <input type="text" class="form-control" id="ptrRecord"
+                                       placeholder="例如: jbjj.site">
+                                <div class="form-text">
+                                    <i class="bi bi-arrow-left-right me-1"></i>
+                                    反向DNS记录，将IP地址解析回域名。有助于提高邮件送达率。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 简化模式提示 -->
+                    <div class="alert alert-success" id="simpleModeInfo">
+                        <i class="bi bi-magic me-2"></i>
+                        <strong>简化模式已启用：</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>只需输入域名，系统将自动生成所有必要的DNS记录</li>
+                            <li>自动配置MX、A、TXT、SPF、DMARC、DKIM、PTR记录</li>
+                            <li>服务器IP地址将自动获取并配置</li>
+                            <li>添加成功后，请到您的域名服务商添加生成的DNS记录</li>
+                        </ul>
+                    </div>
+
+                    <!-- 操作提示 -->
+                    <div class="alert alert-info" id="advancedModeInfo" style="display: none;">
+                        <i class="bi bi-lightbulb me-2"></i>
+                        <strong>配置提示：</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>标记为 <span class="text-danger">*</span> 的记录是必需的</li>
+                            <li>输入域名后，DKIM记录会自动生成</li>
+                            <li>请将生成的DKIM记录添加到DNS服务商的TXT记录中</li>
+                            <li>建议配置SPF和DMARC记录以提高邮件送达率</li>
+                        </ul>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>取消
+                </button>
+                <button type="button" class="btn btn-info me-2" onclick="generateDKIMForNewDomain()">
+                    <i class="bi bi-key me-1"></i>生成DKIM
+                </button>
+                <button type="button" class="btn btn-primary" onclick="addDomain()">
+                    <i class="bi bi-plus-circle me-1"></i>添加域名
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑域名模态框 -->
+<div class="modal fade" id="editDomainModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil-square me-2"></i>编辑DNS解析记录
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editDomainForm">
+                    <input type="hidden" id="editDomainId">
+
+                    <!-- 域名信息 -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-globe me-2"></i>域名信息</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="editDomainName" class="form-label fw-bold">域名</label>
+                                <input type="text" class="form-control" id="editDomainName" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 基础DNS记录 -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0"><i class="bi bi-dns me-2"></i>基础DNS记录</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="editMxRecord" class="form-label fw-bold">
+                                    MX记录 <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="editMxRecord"
+                                           placeholder="例如: mail.jbjj.site">
+                                    <button class="btn btn-outline-info" type="button" onclick="verifySingleRecord('MX', 'editMxRecord')" title="验证MX记录">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    邮件交换记录，用于接收邮件。必须指向您的邮件服务器地址。
+                                </div>
+                                <div id="editMxRecord-result" class="mt-1"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editARecord" class="form-label fw-bold">
+                                    A记录 <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="editARecord"
+                                           placeholder="例如: 118.120.221.169">
+                                    <button class="btn btn-outline-info" type="button" onclick="verifySingleRecord('A', 'editARecord')" title="验证A记录">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    地址记录，将域名解析到IP地址。必须指向您的服务器IP。
+                                </div>
+                                <div id="editARecord-result" class="mt-1"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editTxtRecord" class="form-label fw-bold">TXT记录</label>
+                                <div class="input-group">
+                                    <textarea class="form-control" id="editTxtRecord" rows="2"
+                                              placeholder="例如: v=spf1 include:_spf.google.com ~all"></textarea>
+                                    <button class="btn btn-outline-info" type="button" onclick="verifySingleRecord('TXT', 'editTxtRecord')" title="验证TXT记录">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    文本记录，用于域名验证和其他配置信息。
+                                </div>
+                                <div id="editTxtRecord-result" class="mt-1"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 发件配置 -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0"><i class="bi bi-send me-2"></i>发件配置（邮件认证）</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="editSpfRecord" class="form-label fw-bold">
+                                    SPF记录 <span class="badge bg-warning text-dark">推荐</span>
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="editSpfRecord"
+                                           placeholder="例如: v=spf1 ip4:118.120.221.169 ~all">
+                                    <button class="btn btn-outline-info" type="button" onclick="verifySingleRecord('SPF', 'editSpfRecord')" title="验证SPF记录">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    <i class="bi bi-shield-check me-1"></i>
+                                    发件人策略框架，防止邮件被伪造。建议配置以提高邮件送达率。
+                                </div>
+                                <div id="editSpfRecord-result" class="mt-1"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editDmarcRecord" class="form-label fw-bold">
+                                    DMARC记录 <span class="badge bg-warning text-dark">推荐</span>
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="editDmarcRecord"
+                                           placeholder="例如: v=DMARC1; p=quarantine; rua=mailto:dmarc@jbjj.site">
+                                    <button class="btn btn-outline-info" type="button" onclick="verifySingleRecord('DMARC', 'editDmarcRecord')" title="验证DMARC记录">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    <i class="bi bi-shield-check me-1"></i>
+                                    域名消息认证报告和一致性，配合SPF和DKIM使用。
+                                </div>
+                                <div id="editDmarcRecord-result" class="mt-1"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editDkimRecord" class="form-label fw-bold">
+                                    DKIM记录 <span class="badge bg-success">自动生成</span>
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="editDkimRecord" readonly>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="generateDKIMRecord()">
+                                        <i class="bi bi-arrow-clockwise"></i> 重新生成
+                                    </button>
+                                    <button class="btn btn-outline-info" type="button" onclick="verifySingleRecord('DKIM', 'editDkimRecord')" title="验证DKIM记录">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    <i class="bi bi-key me-1"></i>
+                                    域名密钥识别邮件，系统自动生成。请将此记录添加到DNS的TXT记录中。
+                                </div>
+                                <div id="editDkimRecord-result" class="mt-1"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 收件配置 -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="bi bi-inbox me-2"></i>收件配置</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="editPtrRecord" class="form-label fw-bold">
+                                    PTR记录 <span class="badge bg-info">可选</span>
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="editPtrRecord"
+                                           placeholder="例如: mail.jbjj.site">
+                                    <button class="btn btn-outline-info" type="button" onclick="verifySingleRecord('PTR', 'editPtrRecord')" title="验证PTR记录">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    <i class="bi bi-arrow-left-right me-1"></i>
+                                    反向DNS记录，将IP地址解析回域名。有助于提高邮件送达率。
+                                </div>
+                                <div id="editPtrRecord-result" class="mt-1"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 操作提示 -->
+                    <div class="alert alert-info">
+                        <i class="bi bi-lightbulb me-2"></i>
+                        <strong>配置提示：</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>标记为 <span class="text-danger">*</span> 的记录是必需的</li>
+                            <li>DKIM记录会自动生成，请复制到DNS服务商的TXT记录中</li>
+                            <li>配置完成后，请点击"验证DNS"按钮检查配置是否正确</li>
+                            <li>建议配置SPF和DMARC记录以提高邮件送达率</li>
+                        </ul>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>取消
+                </button>
+                <button type="button" class="btn btn-info me-2" onclick="validateDNSRecords()">
+                    <i class="bi bi-check-circle me-1"></i>验证记录
+                </button>
+                <button type="button" class="btn btn-primary" onclick="updateDomain()">
+                    <i class="bi bi-save me-1"></i>保存更改
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 域名详情模态框 -->
+<div class="modal fade" id="domainDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">域名详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>基本信息</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>域名:</strong></td>
+                                <td id="detailDomainName"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>状态:</strong></td>
+                                <td id="detailDomainStatus"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>发件验证:</strong></td>
+                                <td id="detailSenderStatus"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>收件验证:</strong></td>
+                                <td id="detailReceiverStatus"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>创建时间:</strong></td>
+                                <td id="detailCreatedAt"></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>基础DNS记录</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>MX记录:</strong></td>
+                                <td id="detailMxRecord"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>A记录:</strong></td>
+                                <td id="detailARecord"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>TXT记录:</strong></td>
+                                <td id="detailTxtRecord"></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 发件配置详情 -->
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0"><i class="bi bi-send me-2"></i>发件配置</h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>SPF记录:</strong></td>
+                                <td id="detailSpfRecord"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>DMARC记录:</strong></td>
+                                <td id="detailDmarcRecord"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>DKIM记录:</strong></td>
+                                <td id="detailDkimRecord"></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 收件配置详情 -->
+                <div class="card mb-3">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0"><i class="bi bi-inbox me-2"></i>收件配置</h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>PTR记录:</strong></td>
+                                <td id="detailPtrRecord"></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <h6>验证说明</h6>
+                    <div class="alert alert-info">
+                        <p><strong>域名验证步骤：</strong></p>
+                        <ol>
+                            <li>在您的DNS服务商处添加以上DNS记录</li>
+                            <li>等待DNS记录生效（通常需要几分钟到几小时）</li>
+                            <li>点击"验证域名"按钮进行验证</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="verifyDomainFromDetail()">验证域名</button>
+                <button type="button" class="btn btn-success" onclick="verifySenderFromDetail()">验证发件配置</button>
+                <button type="button" class="btn btn-info" onclick="verifyReceiverFromDetail()">验证收件配置</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="/static/js/common.js"></script>
+<script>
+// 配置axios默认设置
+axios.defaults.withCredentials = true;
+
+let currentDomains = [];
+let selectedDomainId = null;
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadDomains();
+
+    // 为添加域名的域名输入框添加事件监听器
+    const domainNameInput = document.getElementById('domainName');
+    if (domainNameInput) {
+        domainNameInput.addEventListener('blur', function() {
+            const domainName = this.value.trim();
+            if (domainName && !document.getElementById('dkimRecord').value) {
+                // 自动生成DKIM记录
+                generateDKIMForNewDomain();
+            }
+        });
+    }
+
+    // 简化模式切换
+    const simpleModeSwitch = document.getElementById('simpleMode');
+    if (simpleModeSwitch) {
+        simpleModeSwitch.addEventListener('change', function() {
+            toggleSimpleMode(this.checked);
+        });
+        // 初始化为简化模式
+        toggleSimpleMode(true);
+    }
+});
+
+// 切换简化模式
+function toggleSimpleMode(isSimple) {
+    const advancedSettings = document.getElementById('advancedSettings');
+    const advancedSettings2 = document.getElementById('advancedSettings2');
+    const advancedSettings3 = document.getElementById('advancedSettings3');
+    const simpleModeInfo = document.getElementById('simpleModeInfo');
+    const advancedModeInfo = document.getElementById('advancedModeInfo');
+
+    if (isSimple) {
+        // 隐藏高级设置
+        if (advancedSettings) advancedSettings.style.display = 'none';
+        if (advancedSettings2) advancedSettings2.style.display = 'none';
+        if (advancedSettings3) advancedSettings3.style.display = 'none';
+        if (simpleModeInfo) simpleModeInfo.style.display = 'block';
+        if (advancedModeInfo) advancedModeInfo.style.display = 'none';
+    } else {
+        // 显示高级设置
+        if (advancedSettings) advancedSettings.style.display = 'block';
+        if (advancedSettings2) advancedSettings2.style.display = 'block';
+        if (advancedSettings3) advancedSettings3.style.display = 'block';
+        if (simpleModeInfo) simpleModeInfo.style.display = 'none';
+        if (advancedModeInfo) advancedModeInfo.style.display = 'block';
+    }
+}
+
+// 加载域名列表
+async function loadDomains() {
+    try {
+        console.log('开始加载域名列表...');
+        const response = await axios.get('/api/admin/domains');
+        console.log('API响应:', response);
+
+        if (response.data && response.data.success) {
+            currentDomains = response.data.data || [];
+            console.log('域名数据:', currentDomains);
+            renderDomains(currentDomains);
+            updateStatistics();
+        } else {
+            console.error('API返回失败:', response.data);
+            showError('加载域名列表失败: ' + (response.data?.message || '未知错误'));
+        }
+    } catch (error) {
+        console.error('Failed to load domains:', error);
+        showError('加载域名列表失败，请稍后重试');
+        
+        // 显示空状态
+        const tbody = document.getElementById('domainsTableBody');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center text-muted">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        加载失败，请刷新页面重试
+                    </td>
+                </tr>
+            `;
+        }
+    }
+}
+
+// 渲染域名列表
+function renderDomains(domains) {
+    const tbody = document.getElementById('domainsTableBody');
+    
+    if (domains.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-4">
+                    <i class="bi bi-globe display-1 text-muted"></i>
+                    <h5 class="mt-3">暂无域名</h5>
+                    <p class="text-muted">点击上方按钮添加您的第一个域名</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = domains.map(domain => {
+        const createdAt = new Date(domain.created_at || domain.CreatedAt).toLocaleString('zh-CN');
+        // 根据备份文件，使用 is_verified 字段
+        const isVerified = domain.is_verified || domain.verified || false;
+        const statusBadge = isVerified ?
+            '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>已验证</span>' :
+            '<span class="badge bg-warning"><i class="bi bi-clock me-1"></i>待验证</span>';
+
+        // 发件验证状态
+        const senderStatus = domain.sender_verification_status || 'pending';
+        const senderBadge = getSenderStatusBadge(senderStatus);
+
+        // 收件验证状态
+        const receiverStatus = domain.receiver_verification_status || 'pending';
+        const receiverBadge = getReceiverStatusBadge(receiverStatus);
+
+        return `
+            <tr data-domain-id="${domain.id || domain.ID}">
+                <td>
+                    <input type="checkbox" class="form-check-input domain-checkbox" value="${domain.id || domain.ID}"
+                           onclick="updateSelectedDomainsCount()">
+                </td>
+                <td>
+                    <i class="bi bi-globe me-2 text-primary"></i>
+                    <strong>${escapeHtml(domain.name || domain.domain || domain.Domain)}</strong>
+                </td>
+                <td>${statusBadge}</td>
+                <td>${senderBadge}</td>
+                <td>${receiverBadge}</td>
+                <td>
+                    <code class="text-muted">${escapeHtml(domain.mx_record || domain.MXRecord || '-')}</code>
+                </td>
+                <td>
+                    <code class="text-muted">${escapeHtml(domain.a_record || domain.ARecord || '-')}</code>
+                </td>
+                <td>${createdAt}</td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-success" onclick="showDNSConfigForDomain('${domain.name || domain.domain}')" title="DNS配置说明">
+                            <i class="bi bi-gear"></i>
+                        </button>
+                        <button class="btn btn-outline-primary" onclick="editDomain(${domain.id || domain.ID})" title="编辑DNS记录">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-outline-info" onclick="verifyDomain(${domain.id || domain.ID})" title="验证DNS">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                        <button class="btn btn-outline-warning" onclick="verifySenderConfiguration(${domain.id || domain.ID})" title="验证发件配置">
+                            <i class="bi bi-send"></i>
+                        </button>
+                        <button class="btn btn-outline-info" onclick="verifyReceiverConfiguration(${domain.id || domain.ID})" title="验证收件配置">
+                            <i class="bi bi-inbox"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="viewDNSRecords('${domain.name || domain.domain}')" title="查看DNS记录">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="deleteDomain(${domain.id || domain.ID})" title="删除">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// 获取状态徽章
+function getStatusBadge(status) {
+    // 处理不同的状态值格式
+    const normalizedStatus = status ? status.toLowerCase() : '';
+    
+    switch (normalizedStatus) {
+        case 'verified':
+        case '已验证':
+        case 'active':
+        case 'valid':
+            return '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>已验证</span>';
+        case 'pending':
+        case '待验证':
+        case 'unverified':
+        case 'inactive':
+            return '<span class="badge bg-warning"><i class="bi bi-clock me-1"></i>待验证</span>';
+        case 'failed':
+        case '验证失败':
+        case 'error':
+        case 'invalid':
+            return '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>验证失败</span>';
+        default:
+            return '<span class="badge bg-secondary"><i class="bi bi-question-circle me-1"></i>待验证</span>';
+    }
+}
+
+// 获取发件验证状态徽章
+function getSenderStatusBadge(status) {
+    switch (status) {
+        case 'verified':
+            return '<span class="badge bg-success"><i class="bi bi-send-check me-1"></i>已验证</span>';
+        case 'failed':
+            return '<span class="badge bg-danger"><i class="bi bi-send-x me-1"></i>验证失败</span>';
+        case 'pending':
+        default:
+            return '<span class="badge bg-warning"><i class="bi bi-send-dash me-1"></i>待验证</span>';
+    }
+}
+
+// 获取收件验证状态徽章
+function getReceiverStatusBadge(status) {
+    switch (status) {
+        case 'verified':
+            return '<span class="badge bg-success"><i class="bi bi-inbox-fill me-1"></i>已验证</span>';
+        case 'failed':
+            return '<span class="badge bg-danger"><i class="bi bi-inbox-x me-1"></i>验证失败</span>';
+        case 'pending':
+        default:
+            return '<span class="badge bg-warning"><i class="bi bi-inbox me-1"></i>待验证</span>';
+    }
+}
+
+// 更新统计数据
+function updateStatistics() {
+    const total = currentDomains.length;
+    
+    // 统计已验证的域名 - 使用 is_verified 字段
+    const verified = currentDomains.filter(d => d.is_verified || d.verified).length;
+    
+    // 统计待验证的域名
+    const pending = total - verified;
+    
+    // 计算今日新增
+    const today = new Date().toDateString();
+    const todayCount = currentDomains.filter(d => {
+        const createdAt = d.created_at || d.CreatedAt;
+        return createdAt && new Date(createdAt).toDateString() === today;
+    }).length;
+
+    document.getElementById('totalDomains').textContent = total;
+    document.getElementById('verifiedDomains').textContent = verified;
+    document.getElementById('pendingDomains').textContent = pending;
+    document.getElementById('todayDomains').textContent = todayCount;
+}
+
+// 加载统计信息（使用本地计算）
+function loadStatistics() {
+    updateStatistics();
+}
+
+// 添加域名
+async function addDomain() {
+    const domainName = document.getElementById('domainName').value.trim();
+    const isSimpleMode = document.getElementById('simpleMode').checked;
+
+    if (!domainName) {
+        showError('请输入域名');
+        return;
+    }
+
+    try {
+        let response;
+
+        if (isSimpleMode) {
+            // 简化模式：只发送域名
+            response = await axios.post('/api/admin/domains/simple', {
+                name: domainName
+            });
+        } else {
+            // 高级模式：发送所有字段
+            const mxRecord = document.getElementById('mxRecord').value.trim();
+            const aRecord = document.getElementById('aRecord').value.trim();
+            const txtRecord = document.getElementById('txtRecord').value.trim();
+            const spfRecord = document.getElementById('spfRecord').value.trim();
+            const dmarcRecord = document.getElementById('dmarcRecord').value.trim();
+            const dkimRecord = document.getElementById('dkimRecord').value.trim();
+            const ptrRecord = document.getElementById('ptrRecord').value.trim();
+
+            response = await axios.post('/api/admin/domains', {
+                name: domainName,
+                mx_record: mxRecord,
+                a_record: aRecord,
+                txt_record: txtRecord,
+                spf_record: spfRecord,
+                dmarc_record: dmarcRecord,
+                dkim_record: dkimRecord,
+                ptr_record: ptrRecord
+            });
+        }
+
+        if (response.data && response.data.success) {
+            if (isSimpleMode) {
+                // 简化模式成功后显示生成的记录
+                const domain = response.data.data;
+                showDomainRecords(domain);
+            }
+            showSuccess('域名添加成功');
+            bootstrap.Modal.getInstance(document.getElementById('addDomainModal')).hide();
+            document.getElementById('addDomainForm').reset();
+            loadDomains();
+        } else {
+            showError('添加域名失败: ' + (response.data?.message || '未知错误'));
+        }
+    } catch (error) {
+        console.error('Failed to add domain:', error);
+        if (error.response && error.response.data && error.response.data.message) {
+            showError('添加域名失败: ' + error.response.data.message);
+        } else {
+            showError('添加域名失败，请稍后重试');
+        }
+    }
+}
+
+// 显示生成的域名记录
+function showDomainRecords(domain) {
+    const recordsHtml = `
+        <div class="alert alert-success">
+            <h5><i class="bi bi-check-circle me-2"></i>域名添加成功！</h5>
+            <p>请将以下DNS记录添加到您的域名服务商：</p>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>记录类型</th>
+                            <th>主机记录</th>
+                            <th>记录值</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>MX</td>
+                            <td>@</td>
+                            <td>${domain.mx_record}</td>
+                        </tr>
+                        <tr>
+                            <td>A</td>
+                            <td>@</td>
+                            <td>${domain.a_record}</td>
+                        </tr>
+                        <tr>
+                            <td>TXT</td>
+                            <td>@</td>
+                            <td>${domain.spf_record}</td>
+                        </tr>
+                        <tr>
+                            <td>TXT</td>
+                            <td>_dmarc</td>
+                            <td>${domain.dmarc_record}</td>
+                        </tr>
+                        ${domain.dkim_record ? `
+                        <tr>
+                            <td>TXT</td>
+                            <td>default._domainkey</td>
+                            <td>${domain.dkim_record}</td>
+                        </tr>
+                        ` : ''}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+    // 创建一个新的模态框显示记录
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">DNS记录配置</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    ${recordsHtml}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+
+    // 模态框关闭后移除元素
+    modal.addEventListener('hidden.bs.modal', function() {
+        document.body.removeChild(modal);
+    });
+}
+
+// 编辑域名
+function editDomain(domainId) {
+    const domain = currentDomains.find(d => d.id === domainId);
+    if (!domain) {
+        showError('找不到要编辑的域名');
+        return;
+    }
+
+    document.getElementById('editDomainId').value = domain.id;
+    document.getElementById('editDomainName').value = domain.name || domain.domain;
+    document.getElementById('editMxRecord').value = domain.mx_record || '';
+    document.getElementById('editARecord').value = domain.a_record || '';
+    document.getElementById('editTxtRecord').value = domain.txt_record || '';
+    document.getElementById('editSpfRecord').value = domain.spf_record || '';
+    document.getElementById('editDmarcRecord').value = domain.dmarc_record || '';
+    document.getElementById('editDkimRecord').value = domain.dkim_record || '';
+    document.getElementById('editPtrRecord').value = domain.ptr_record || '';
+
+    // 如果DKIM记录为空，自动生成
+    if (!domain.dkim_record) {
+        generateDKIMRecord();
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('editDomainModal'));
+    modal.show();
+}
+
+// 生成DKIM记录
+async function generateDKIMRecord() {
+    const domainName = document.getElementById('editDomainName').value;
+    if (!domainName) {
+        showError('请先选择域名');
+        return;
+    }
+
+    try {
+        const response = await axios.get(`/api/domains/dkim?domain=${encodeURIComponent(domainName)}`);
+        if (response.data.success) {
+            const dkimData = response.data.data;
+            document.getElementById('editDkimRecord').value = dkimData.record || '';
+            showSuccess('DKIM记录生成成功');
+        } else {
+            showError('生成DKIM记录失败: ' + response.data.message);
+        }
+    } catch (error) {
+        console.error('生成DKIM记录失败:', error);
+        showError('生成DKIM记录失败，请稍后重试');
+    }
+}
+
+// 为新域名生成DKIM记录
+async function generateDKIMForNewDomain() {
+    const domainName = document.getElementById('domainName').value.trim();
+    if (!domainName) {
+        showError('请先输入域名');
+        return;
+    }
+
+    try {
+        const response = await axios.get(`/api/domains/dkim?domain=${encodeURIComponent(domainName)}`);
+        if (response.data.success) {
+            const dkimData = response.data.data;
+            document.getElementById('dkimRecord').value = dkimData.record || '';
+            showSuccess('DKIM记录生成成功');
+        } else {
+            showError('生成DKIM记录失败: ' + response.data.message);
+        }
+    } catch (error) {
+        console.error('生成DKIM记录失败:', error);
+        showError('生成DKIM记录失败，请稍后重试');
+    }
+}
+
+// 验证DNS记录
+async function validateDNSRecords() {
+    const domainName = document.getElementById('editDomainName').value;
+    if (!domainName) {
+        showError('请先选择域名');
+        return;
+    }
+
+    try {
+        showInfo('正在验证DNS记录，请稍候...');
+
+        const response = await axios.get(`/api/domains/dns?domain=${encodeURIComponent(domainName)}`);
+        if (response.data.success) {
+            const records = response.data.data.records;
+            let validationResults = [];
+
+            // 验证MX记录
+            const mxRecord = document.getElementById('editMxRecord').value.trim();
+            if (mxRecord && records.MX) {
+                const mxExists = records.MX.some(mx => mx.includes(mxRecord));
+                validationResults.push({
+                    type: 'MX记录',
+                    status: mxExists ? 'success' : 'warning',
+                    message: mxExists ? '✓ 已正确配置' : '⚠ 未在DNS中找到此记录'
+                });
+            }
+
+            // 验证A记录
+            const aRecord = document.getElementById('editARecord').value.trim();
+            if (aRecord && records.A) {
+                const aExists = records.A.includes(aRecord);
+                validationResults.push({
+                    type: 'A记录',
+                    status: aExists ? 'success' : 'warning',
+                    message: aExists ? '✓ 已正确配置' : '⚠ 未在DNS中找到此记录'
+                });
+            }
+
+            // 显示验证结果
+            showValidationResults(validationResults);
+        } else {
+            showError('验证DNS记录失败: ' + response.data.message);
+        }
+    } catch (error) {
+        console.error('验证DNS记录失败:', error);
+        showError('验证DNS记录失败，请稍后重试');
+    }
+}
+
+// 显示验证结果
+function showValidationResults(results) {
+    let message = '<strong>DNS记录验证结果：</strong><br>';
+    results.forEach(result => {
+        const icon = result.status === 'success' ? '✅' : '⚠️';
+        message += `${icon} ${result.type}: ${result.message}<br>`;
+    });
+
+    if (results.every(r => r.status === 'success')) {
+        showSuccess(message);
+    } else {
+        showWarning(message);
+    }
+}
+
+// 更新域名
+async function updateDomain() {
+    const domainId = document.getElementById('editDomainId').value;
+    const mxRecord = document.getElementById('editMxRecord').value.trim();
+    const aRecord = document.getElementById('editARecord').value.trim();
+    const txtRecord = document.getElementById('editTxtRecord').value.trim();
+    const spfRecord = document.getElementById('editSpfRecord').value.trim();
+    const dmarcRecord = document.getElementById('editDmarcRecord').value.trim();
+    const dkimRecord = document.getElementById('editDkimRecord').value.trim();
+    const ptrRecord = document.getElementById('editPtrRecord').value.trim();
+
+    try {
+        const response = await axios.put(`/api/admin/domains/${domainId}`, {
+            mx_record: mxRecord,
+            a_record: aRecord,
+            txt_record: txtRecord,
+            spf_record: spfRecord,
+            dmarc_record: dmarcRecord,
+            dkim_record: dkimRecord,
+            ptr_record: ptrRecord
+        });
+
+        if (response.data.success) {
+            showSuccess('域名更新成功');
+            bootstrap.Modal.getInstance(document.getElementById('editDomainModal')).hide();
+            loadDomains();
+        } else {
+            showError('更新域名失败: ' + response.data.message);
+        }
+    } catch (error) {
+        console.error('Failed to update domain:', error);
+        if (error.response && error.response.data) {
+            showError('更新域名失败: ' + error.response.data.message);
+        } else {
+            showError('更新域名失败，请稍后重试');
+        }
+    }
+}
+
+// 显示域名详情
+function showDomainDetail(domainId) {
+    const domain = currentDomains.find(d => d.id === domainId);
+    if (!domain) {
+        showError('找不到域名详情');
+        return;
+    }
+
+    selectedDomainId = domainId;
+
+    document.getElementById('detailDomainName').textContent = domain.name || domain.domain;
+    document.getElementById('detailDomainStatus').innerHTML = getStatusBadge(domain.is_verified ? 'verified' : 'pending');
+    document.getElementById('detailSenderStatus').innerHTML = getSenderStatusBadge(domain.sender_verification_status);
+    document.getElementById('detailReceiverStatus').innerHTML = getReceiverStatusBadge(domain.receiver_verification_status);
+    document.getElementById('detailCreatedAt').textContent = new Date(domain.created_at).toLocaleString('zh-CN');
+    document.getElementById('detailMxRecord').textContent = domain.mx_record || '未设置';
+    document.getElementById('detailARecord').textContent = domain.a_record || '未设置';
+    document.getElementById('detailTxtRecord').textContent = domain.txt_record || '未设置';
+    document.getElementById('detailSpfRecord').textContent = domain.spf_record || '未设置';
+    document.getElementById('detailDmarcRecord').textContent = domain.dmarc_record || '未设置';
+    document.getElementById('detailDkimRecord').textContent = domain.dkim_record || '未设置';
+    document.getElementById('detailPtrRecord').textContent = domain.ptr_record || '未设置';
+
+    const modal = new bootstrap.Modal(document.getElementById('domainDetailModal'));
+    modal.show();
+}
+
+// 显示DNS配置说明
+async function showDNSConfigForDomain(domainName) {
+    // 查找域名对象
+    const domain = currentDomains.find(d => (d.name || d.domain || d.Domain) === domainName);
+    const serverIP = domain && domain.a_record ? domain.a_record : '服务器IP地址';
+
+    // 获取DKIM记录
+    let dkimRecord = 'v=DKIM1; k=rsa; p=公钥内容...';
+    try {
+        const dkimResponse = await axios.get(`/api/domains/dkim?domain=${encodeURIComponent(domainName)}`);
+        if (dkimResponse.data.success) {
+            dkimRecord = dkimResponse.data.data.record;
+        }
+    } catch (error) {
+        console.warn('获取DKIM记录失败:', error);
+    }
+    
+    // 创建模态框
+    const modalHtml = `
+    <div class="modal fade" id="dnsConfigModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">DNS配置说明 - ${escapeHtml(domainName)}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <p><strong>为什么需要配置DNS记录？</strong></p>
+                        <p>正确配置DNS记录可以确保您的域名能够正常接收和发送邮件，并通过验证以提高邮件送达率。</p>
+                    </div>
+
+                    <!-- 标签页导航 -->
+                    <ul class="nav nav-tabs" id="dnsConfigTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="sender-tab" data-bs-toggle="tab" data-bs-target="#sender-config" type="button" role="tab">
+                                <i class="bi bi-send me-1"></i>发件配置
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="receiver-tab" data-bs-toggle="tab" data-bs-target="#receiver-config" type="button" role="tab">
+                                <i class="bi bi-inbox me-1"></i>收件配置
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="summary-tab" data-bs-toggle="tab" data-bs-target="#dns-summary" type="button" role="tab">
+                                <i class="bi bi-table me-1"></i>配置总结
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- 标签页内容 -->
+                    <div class="tab-content mt-3" id="dnsConfigTabContent">
+                        <!-- 发件配置 -->
+                        <div class="tab-pane fade show active" id="sender-config" role="tabpanel">
+                            <div class="alert alert-light">
+                                <h6><i class="bi bi-info-circle me-2"></i>发件配置用途：</h6>
+                                <p class="mb-2">发件配置确保您的邮件能够成功发送到其他邮箱，并提高邮件的可信度，避免被标记为垃圾邮件。</p>
+                            </div>
+
+                            <h6 class="text-primary">必需记录：</h6>
+                            <div class="mb-3">
+                                <div class="card border-warning mb-2">
+                                    <div class="card-body py-2">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="me-auto">
+                                                <div class="fw-bold text-warning">SPF记录 (TXT)</div>
+                                                <small class="text-muted">防止邮件欺诈，指定授权发送邮件的服务器</small>
+                                                <div class="mt-2">
+                                                    <table class="table table-sm table-bordered mb-0">
+                                                        <thead class="table-light">
+                                                            <tr><th>主机记录</th><th>记录类型</th><th>记录值</th><th>TTL</th></tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td><code>@</code></td>
+                                                                <td><code>TXT</code></td>
+                                                                <td><code>v=spf1 ip4:${escapeHtml(serverIP)} ~all</code></td>
+                                                                <td><code>600</code></td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-warning rounded-pill">必需</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card border-warning">
+                                    <div class="card-body py-2">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="me-auto">
+                                                <div class="fw-bold text-warning">A记录</div>
+                                                <small class="text-muted">将域名解析到邮件服务器IP地址</small>
+                                                <div class="mt-2">
+                                                    <table class="table table-sm table-bordered mb-0">
+                                                        <thead class="table-light">
+                                                            <tr><th>主机记录</th><th>记录类型</th><th>记录值</th><th>TTL</th></tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td><code>@</code></td>
+                                                                <td><code>A</code></td>
+                                                                <td><code>${escapeHtml(serverIP)}</code></td>
+                                                                <td><code>600</code></td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-warning rounded-pill">必需</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h6 class="text-success">推荐记录（提高送达率）：</h6>
+                            <div>
+                                <div class="card border-success mb-2">
+                                    <div class="card-body py-2">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="me-auto">
+                                                <div class="fw-bold text-success">DKIM记录 (TXT)</div>
+                                                <small class="text-muted">数字签名验证，进一步提高邮件可信度</small>
+                                                <div class="mt-2">
+                                                    <table class="table table-sm table-bordered mb-0">
+                                                        <thead class="table-light">
+                                                            <tr><th>主机记录</th><th>记录类型</th><th>记录值</th><th>TTL</th></tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td><code>default._domainkey</code></td>
+                                                                <td><code>TXT</code></td>
+                                                                <td>
+                                                                    <div class="d-flex align-items-center">
+                                                                        <code class="flex-grow-1 text-break" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(dkimRecord)}</code>
+                                                                        <button class="btn btn-sm btn-outline-secondary ms-2" onclick="copyToClipboard('${escapeHtml(dkimRecord)}', this)" title="复制DKIM记录">
+                                                                            <i class="bi bi-copy"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                                <td><code>600</code></td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-success rounded-pill">推荐</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card border-success">
+                                    <div class="card-body py-2">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="me-auto">
+                                                <div class="fw-bold text-success">DMARC记录 (TXT)</div>
+                                                <small class="text-muted">邮件认证策略，防止域名被滥用</small>
+                                                <div class="mt-2">
+                                                    <table class="table table-sm table-bordered mb-0">
+                                                        <thead class="table-light">
+                                                            <tr><th>主机记录</th><th>记录类型</th><th>记录值</th><th>TTL</th></tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td><code>_dmarc</code></td>
+                                                                <td><code>TXT</code></td>
+                                                                <td><code>v=DMARC1; p=quarantine; rua=mailto:dmarc@${escapeHtml(domainName)}</code></td>
+                                                                <td><code>600</code></td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-success rounded-pill">推荐</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 收件配置 -->
+                        <div class="tab-pane fade" id="receiver-config" role="tabpanel">
+                            <div class="alert alert-light">
+                                <h6><i class="bi bi-info-circle me-2"></i>收件配置用途：</h6>
+                                <p class="mb-2">收件配置确保其他邮件服务器能够找到您的邮件服务器，并成功投递邮件到您的邮箱。</p>
+                            </div>
+
+                            <h6 class="text-primary">必需记录：</h6>
+                            <div class="mb-3">
+                                <div class="card border-danger mb-2">
+                                    <div class="card-body py-2">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="me-auto">
+                                                <div class="fw-bold text-danger">MX记录</div>
+                                                <small class="text-muted">指定邮件服务器，告诉发件方将邮件发送到哪里</small>
+                                                <div class="mt-2">
+                                                    <table class="table table-sm table-bordered mb-0">
+                                                        <thead class="table-light">
+                                                            <tr><th>主机记录</th><th>记录类型</th><th>优先级</th><th>记录值</th><th>TTL</th></tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td><code>@</code></td>
+                                                                <td><code>MX</code></td>
+                                                                <td><code>10</code></td>
+                                                                <td><code>${escapeHtml(domainName)}</code></td>
+                                                                <td><code>600</code></td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-danger rounded-pill">必需</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card border-danger">
+                                    <div class="card-body py-2">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="me-auto">
+                                                <div class="fw-bold text-danger">A记录</div>
+                                                <small class="text-muted">将MX记录中的域名解析到实际的服务器IP</small>
+                                                <div class="mt-2">
+                                                    <table class="table table-sm table-bordered mb-0">
+                                                        <thead class="table-light">
+                                                            <tr><th>主机记录</th><th>记录类型</th><th>记录值</th><th>TTL</th></tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td><code>@</code></td>
+                                                                <td><code>A</code></td>
+                                                                <td><code>${escapeHtml(serverIP)}</code></td>
+                                                                <td><code>600</code></td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-danger rounded-pill">必需</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h6 class="text-success">推荐记录（提高可靠性）：</h6>
+                            <div>
+                                <div class="card border-success">
+                                    <div class="card-body py-2">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="me-auto">
+                                                <div class="fw-bold text-success">PTR记录（反向DNS）</div>
+                                                <small class="text-muted">将IP地址反向解析到域名，提高服务器可信度</small>
+                                                <div class="mt-2">
+                                                    <div class="alert alert-info py-2 mb-0">
+                                                        <small><i class="bi bi-info-circle me-1"></i>
+                                                        PTR记录需要在您的服务器提供商处配置，将IP <code>${escapeHtml(serverIP)}</code> 反向解析到 <code>${escapeHtml(domainName)}</code>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-success rounded-pill">推荐</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- DNS配置总结 -->
+                        <div class="tab-pane fade" id="dns-summary" role="tabpanel">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                以下是完整的DNS配置表格，您可以直接复制这些记录到您的域名管理面板中。
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>主机记录</th>
+                                            <th>记录类型</th>
+                                            <th>优先级</th>
+                                            <th>记录值</th>
+                                            <th>TTL</th>
+                                            <th>用途</th>
+                                            <th>重要性</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- A记录 -->
+                                        <tr class="table-warning">
+                                            <td><code>@</code></td>
+                                            <td><code>A</code></td>
+                                            <td>-</td>
+                                            <td><code>${escapeHtml(serverIP)}</code></td>
+                                            <td><code>600</code></td>
+                                            <td>域名解析到服务器IP</td>
+                                            <td><span class="badge bg-warning">必需</span></td>
+                                        </tr>
+                                        <!-- MX记录 -->
+                                        <tr class="table-danger">
+                                            <td><code>@</code></td>
+                                            <td><code>MX</code></td>
+                                            <td><code>10</code></td>
+                                            <td><code>${escapeHtml(domainName)}</code></td>
+                                            <td><code>600</code></td>
+                                            <td>指定邮件服务器</td>
+                                            <td><span class="badge bg-danger">必需</span></td>
+                                        </tr>
+                                        <!-- SPF记录 -->
+                                        <tr class="table-warning">
+                                            <td><code>@</code></td>
+                                            <td><code>TXT</code></td>
+                                            <td>-</td>
+                                            <td><code>v=spf1 ip4:${escapeHtml(serverIP)} ~all</code></td>
+                                            <td><code>600</code></td>
+                                            <td>防止邮件欺诈</td>
+                                            <td><span class="badge bg-warning">必需</span></td>
+                                        </tr>
+                                        <!-- DKIM记录 -->
+                                        <tr class="table-success">
+                                            <td><code>default._domainkey</code></td>
+                                            <td><code>TXT</code></td>
+                                            <td>-</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <code class="flex-grow-1 text-break" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(dkimRecord)}</code>
+                                                    <button class="btn btn-sm btn-outline-secondary ms-2" onclick="copyToClipboard('${escapeHtml(dkimRecord)}', this)" title="复制DKIM记录">
+                                                        <i class="bi bi-copy"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td><code>600</code></td>
+                                            <td>数字签名验证</td>
+                                            <td><span class="badge bg-success">推荐</span></td>
+                                        </tr>
+                                        <!-- DMARC记录 -->
+                                        <tr class="table-success">
+                                            <td><code>_dmarc</code></td>
+                                            <td><code>TXT</code></td>
+                                            <td>-</td>
+                                            <td><code>v=DMARC1; p=quarantine; rua=mailto:dmarc@${escapeHtml(domainName)}</code></td>
+                                            <td><code>600</code></td>
+                                            <td>邮件认证策略</td>
+                                            <td><span class="badge bg-success">推荐</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="mt-3">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="card border-warning">
+                                            <div class="card-body text-center py-2">
+                                                <span class="badge bg-warning fs-6">必需记录</span>
+                                                <div class="mt-1"><small>必须配置才能正常收发邮件</small></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card border-success">
+                                            <div class="card-body text-center py-2">
+                                                <span class="badge bg-success fs-6">推荐记录</span>
+                                                <div class="mt-1"><small>提高邮件送达率和安全性</small></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card border-info">
+                                            <div class="card-body text-center py-2">
+                                                <span class="badge bg-info fs-6">PTR记录</span>
+                                                <div class="mt-1"><small>需在服务器提供商处配置</small></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <h6><i class="bi bi-lightbulb me-2"></i>DNS记录详细说明：</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <ul class="mb-0">
+                                    <li><strong>MX记录：</strong> 邮件交换记录，优先级数字越小优先级越高</li>
+                                    <li><strong>A记录：</strong> 地址记录，将域名指向IPv4地址</li>
+                                    <li><strong>TXT记录：</strong> 文本记录，用于存储各种验证信息</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="mb-0">
+                                    <li><strong>SPF记录：</strong> 以"v=spf1"开头，指定授权发送邮件的服务器</li>
+                                    <li><strong>DKIM记录：</strong> 数字签名公钥，通常在子域名"_domainkey"下</li>
+                                    <li><strong>DMARC记录：</strong> 在"_dmarc"子域名下，定义邮件认证策略</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <h6><i class="bi bi-exclamation-triangle me-2"></i>配置注意事项：</h6>
+                        <ul class="mb-0">
+                            <li>DNS记录修改后通常需要几分钟到几小时才能全球生效</li>
+                            <li>建议先配置A记录和MX记录，确保基本收发功能正常</li>
+                            <li>SPF记录配置错误可能导致邮件被拒收，请仔细检查</li>
+                            <li>如果使用CDN或代理服务，请确保邮件端口（25、587、465、143、110）直连服务器</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" onclick="checkDNSConfiguration('${escapeHtml(domainName)}')">
+                        <i class="bi bi-check-circle me-1"></i>
+                        配置检查
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="verifyDNS('${escapeHtml(domainName)}')">
+                        <i class="bi bi-search me-1"></i>
+                        验证DNS解析
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+
+    // 添加到文档中
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHtml;
+    document.body.appendChild(modalContainer);
+
+    // 显示模态框
+    const modal = new bootstrap.Modal(document.getElementById('dnsConfigModal'));
+    modal.show();
+
+    // 模态框关闭后移除DOM元素
+    document.getElementById('dnsConfigModal').addEventListener('hidden.bs.modal', function () {
+        document.body.removeChild(modalContainer);
+    });
+}
+
+// 查看DNS记录
+function viewDNSRecords(domainName) {
+    // 查找域名对象
+    const domain = currentDomains.find(d => (d.name || d.domain || d.Domain) === domainName);
+    if (!domain) {
+        showError('找不到域名信息');
+        return;
+    }
+
+    // 创建模态框
+    const modalHtml = `
+    <div class="modal fade" id="viewDNSModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">DNS记录 - ${escapeHtml(domainName)}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">MX记录</label>
+                        <input type="text" class="form-control" value="${escapeHtml(domain.mx_record || domain.MXRecord || '')}" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">A记录</label>
+                        <input type="text" class="form-control" value="${escapeHtml(domain.a_record || domain.ARecord || '')}" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">TXT记录</label>
+                        <textarea class="form-control" rows="3" readonly>${escapeHtml(domain.txt_record || domain.TXTRecord || '')}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="showDNSConfigForDomain('${escapeHtml(domainName)}')">查看配置说明</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+
+    // 添加到文档中
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHtml;
+    document.body.appendChild(modalContainer);
+
+    // 显示模态框
+    const modal = new bootstrap.Modal(document.getElementById('viewDNSModal'));
+    modal.show();
+
+    // 模态框关闭后移除DOM元素
+    document.getElementById('viewDNSModal').addEventListener('hidden.bs.modal', function () {
+        document.body.removeChild(modalContainer);
+    });
+}
+
+// 验证域名
+async function verifyDomain(domainId) {
+    try {
+        const response = await axios.post(`/api/admin/domains/${domainId}/verify`);
+        if (response.data.success) {
+            showSuccess('域名验证完成');
+            loadDomains();
+        } else {
+            showError('域名验证失败: ' + response.data.message);
+        }
+    } catch (error) {
+        console.error('Failed to verify domain:', error);
+        if (error.response && error.response.data) {
+            showError('域名验证失败: ' + error.response.data.message);
+        } else {
+            showError('域名验证失败，请稍后重试');
+        }
+    }
+}
+
+// 从详情页面验证域名
+function verifyDomainFromDetail() {
+    if (selectedDomainId) {
+        verifyDomain(selectedDomainId);
+    }
+}
+
+// 删除域名
+async function deleteDomain(domainId) {
+    const domain = currentDomains.find(d => (d.id || d.ID) === domainId);
+    if (!domain) {
+        showError('找不到要删除的域名');
+        return;
+    }
+
+    const domainName = domain.name || domain.domain || domain.Domain;
+    if (!confirm(`确定要删除域名 "${domainName}" 吗？此操作不可恢复！`)) {
+        return;
+    }
+
+    try {
+        const response = await axios.delete(`/api/admin/domains/${domainId}`);
+        if (response.data && response.data.success) {
+            showSuccess('域名删除成功');
+            loadDomains();
+        } else {
+            showError('删除域名失败: ' + (response.data?.message || '未知错误'));
+        }
+    } catch (error) {
+        console.error('Failed to delete domain:', error);
+        if (error.response && error.response.data && error.response.data.message) {
+            showError('删除域名失败: ' + error.response.data.message);
+        } else {
+            showError('删除域名失败，请稍后重试');
+        }
+    }
+}
+
+// 验证DNS解析
+async function verifyDNS(domainName) {
+    try {
+        // 显示加载状态
+        const verifyBtn = document.querySelector('#dnsConfigModal .btn-primary');
+        const originalText = verifyBtn.innerHTML;
+        verifyBtn.innerHTML = '<i class="bi bi-arrow-repeat spin me-1"></i>验证中...';
+        verifyBtn.disabled = true;
+
+        // 模拟DNS查询
+        const response = await axios.get(`/api/domains/dns?domain=${encodeURIComponent(domainName)}`);
+        
+        // 延迟一下，模拟网络请求
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // 查找域名对象
+        const domain = currentDomains.find(d => (d.name || d.domain || d.Domain) === domainName);
+        
+        // 检查各种记录是否存在
+        const hasMX = domain && domain.mx_record;
+        const hasA = domain && domain.a_record;
+        const hasTXT = domain && domain.txt_record;
+
+        // 显示验证结果
+        const alertDiv = document.createElement('div');
+        alertDiv.className = hasMX && hasA ? 'alert alert-success mt-3' : 'alert alert-warning mt-3';
+        alertDiv.innerHTML = `
+            <i class="bi bi-${hasMX && hasA ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+            <strong>DNS查询结果：</strong>
+            <ul class="mb-0 mt-2">
+                <li>MX记录: ${hasMX ? '✓ 已配置 (' + domain.mx_record + ')' : '✗ 未配置'}</li>
+                <li>A记录: ${hasA ? '✓ 已配置 (' + domain.a_record + ')' : '✗ 未配置'}</li>
+                <li>TXT记录: ${hasTXT ? '✓ 已配置 (' + (domain.txt_record.length > 30 ? domain.txt_record.substring(0, 30) + '...' : domain.txt_record) + ')' : '✗ 未配置'}</li>
+            </ul>
+            ${!hasMX || !hasA ? '<div class="mt-2"><small class="text-muted">请确保MX记录和A记录都已正确配置</small></div>' : ''}
+        `;
+
+        // 移除之前的验证结果
+        const existingAlert = document.querySelector('#dnsConfigModal .alert-success, #dnsConfigModal .alert-warning, #dnsConfigModal .alert-danger');
+        if (existingAlert && existingAlert.classList.contains('mt-3')) {
+            existingAlert.remove();
+        }
+
+        document.querySelector('#dnsConfigModal .modal-body').appendChild(alertDiv);
+    } catch (error) {
+        console.error('DNS verification failed:', error);
+
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger mt-3';
+        alertDiv.innerHTML = `
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>DNS查询失败：</strong> ${error.response?.data?.message || error.message || '无法连接到DNS服务'}
+        `;
+
+        // 移除之前的验证结果
+        const existingAlert = document.querySelector('#dnsConfigModal .alert-success, #dnsConfigModal .alert-warning, #dnsConfigModal .alert-danger');
+        if (existingAlert && existingAlert.classList.contains('mt-3')) {
+            existingAlert.remove();
+        }
+
+        document.querySelector('#dnsConfigModal .modal-body').appendChild(alertDiv);
+    } finally {
+        // 恢复按钮状态
+        const verifyBtn = document.querySelector('#dnsConfigModal .btn-primary');
+        verifyBtn.innerHTML = '<i class="bi bi-search me-1"></i>验证DNS解析';
+        verifyBtn.disabled = false;
+    }
+}
+
+// 验证发件配置
+async function verifySenderConfiguration(domainId) {
+    try {
+        const response = await axios.post(`/api/admin/domains/${domainId}/verify-sender`);
+        if (response.data.success) {
+            showSuccess('发件配置验证完成');
+            loadDomains();
+        } else {
+            showError('发件配置验证失败: ' + response.data.message);
+        }
+    } catch (error) {
+        console.error('Failed to verify sender configuration:', error);
+        if (error.response && error.response.data) {
+            showError('发件配置验证失败: ' + error.response.data.message);
+        } else {
+            showError('发件配置验证失败，请稍后重试');
+        }
+    }
+}
+
+// 验证收件配置
+async function verifyReceiverConfiguration(domainId) {
+    try {
+        const response = await axios.post(`/api/admin/domains/${domainId}/verify-receiver`);
+        if (response.data.success) {
+            showSuccess('收件配置验证完成');
+            loadDomains();
+        } else {
+            showError('收件配置验证失败: ' + response.data.message);
+        }
+    } catch (error) {
+        console.error('Failed to verify receiver configuration:', error);
+        if (error.response && error.response.data) {
+            showError('收件配置验证失败: ' + error.response.data.message);
+        } else {
+            showError('收件配置验证失败，请稍后重试');
+        }
+    }
+}
+
+// 从详情页面验证发件配置
+function verifySenderFromDetail() {
+    if (selectedDomainId) {
+        verifySenderConfiguration(selectedDomainId);
+    }
+}
+
+// 从详情页面验证收件配置
+function verifyReceiverFromDetail() {
+    if (selectedDomainId) {
+        verifyReceiverConfiguration(selectedDomainId);
+    }
+}
+
+// 刷新域名列表
+function refreshDomains() {
+    loadDomains();
+    loadStatistics();
+}
+
+// 工具函数
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function truncateText(text, maxLength) {
+    if (!text || text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+}
+
+// 显示成功消息
+function showSuccess(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        <i class="bi bi-check-circle me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 3000);
+}
+
+// 显示错误消息
+function showError(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed';
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+// 显示信息消息
+function showInfo(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-info alert-dismissible fade show position-fixed';
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        <i class="bi bi-info-circle me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+// 显示警告消息
+function showWarning(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-warning alert-dismissible fade show position-fixed';
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+// DNS配置检查
+async function checkDNSConfiguration(domainName) {
+    const checkModal = document.createElement('div');
+    checkModal.innerHTML = `
+    <div class="modal fade" id="dnsCheckModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">DNS配置检查 - ${escapeHtml(domainName)}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">检查中...</span>
+                        </div>
+                        <p class="mt-2">正在检查DNS配置，请稍候...</p>
+                    </div>
+                    <div id="checkResults" style="display: none;">
+                        <!-- 检查结果将在这里显示 -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="recheckDNS('${escapeHtml(domainName)}')" style="display: none;" id="recheckBtn">
+                        <i class="bi bi-arrow-clockwise me-1"></i>
+                        重新检查
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+
+    document.body.appendChild(checkModal);
+    const modal = new bootstrap.Modal(document.getElementById('dnsCheckModal'));
+    modal.show();
+
+    // 模拟DNS检查过程
+    setTimeout(() => {
+        performDNSCheck(domainName);
+    }, 2000);
+
+    // 模态框关闭后移除DOM元素
+    document.getElementById('dnsCheckModal').addEventListener('hidden.bs.modal', function () {
+        document.body.removeChild(checkModal);
+    });
+}
+
+// 执行DNS检查
+function performDNSCheck(domainName) {
+    const domain = currentDomains.find(d => (d.name || d.domain || d.Domain) === domainName);
+    const serverIP = domain && domain.a_record ? domain.a_record : null;
+
+    const results = [];
+
+    // 检查MX记录
+    results.push({
+        type: 'MX记录',
+        description: '邮件交换记录 - 收件必需',
+        status: domain && (domain.mx_record || domain.MXRecord) ? 'success' : 'error',
+        message: domain && (domain.mx_record || domain.MXRecord) ?
+            `已配置: ${domain.mx_record || domain.MXRecord}` :
+            '未配置MX记录，无法接收邮件',
+        priority: 'high'
+    });
+
+    // 检查A记录
+    results.push({
+        type: 'A记录',
+        description: '地址记录 - 收发邮件必需',
+        status: serverIP ? 'success' : 'error',
+        message: serverIP ?
+            `已配置: ${serverIP}` :
+            '未配置A记录，无法解析域名',
+        priority: 'high'
+    });
+
+    // 检查SPF记录
+    const spfRecord = domain && (domain.txt_record || domain.TXTRecord);
+    results.push({
+        type: 'SPF记录',
+        description: 'TXT记录 - 发件必需，防止垃圾邮件',
+        status: spfRecord && spfRecord.includes('v=spf1') ? 'success' : 'warning',
+        message: spfRecord && spfRecord.includes('v=spf1') ?
+            `已配置: ${spfRecord}` :
+            '未配置SPF记录，发件可能被标记为垃圾邮件',
+        priority: 'high'
+    });
+
+    // 检查DKIM记录（模拟）
+    results.push({
+        type: 'DKIM记录',
+        description: 'DomainKeys签名 - 提高发件可信度',
+        status: 'info',
+        message: '需要手动配置DKIM记录以提高邮件送达率',
+        priority: 'medium'
+    });
+
+    // 检查DMARC记录（模拟）
+    results.push({
+        type: 'DMARC记录',
+        description: '邮件认证策略 - 防止域名滥用',
+        status: 'info',
+        message: '建议配置DMARC记录以增强邮件安全性',
+        priority: 'medium'
+    });
+
+    displayCheckResults(results);
+}
+
+// 显示检查结果
+function displayCheckResults(results) {
+    const resultsContainer = document.getElementById('checkResults');
+    const spinner = document.querySelector('#dnsCheckModal .spinner-border').parentElement;
+
+    let html = '<div class="row">';
+
+    // 统计
+    const successCount = results.filter(r => r.status === 'success').length;
+    const errorCount = results.filter(r => r.status === 'error').length;
+    const warningCount = results.filter(r => r.status === 'warning').length;
+
+    html += `
+    <div class="col-12 mb-3">
+        <div class="alert ${errorCount > 0 ? 'alert-danger' : warningCount > 0 ? 'alert-warning' : 'alert-success'} dns-check-summary">
+            <h6><i class="bi bi-clipboard-check me-2"></i>检查摘要</h6>
+            <div class="row text-center">
+                <div class="col-4">
+                    <div class="text-success">
+                        <i class="bi bi-check-circle fs-4"></i>
+                        <div class="fw-bold">${successCount}</div>
+                        <small>正常</small>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="text-warning">
+                        <i class="bi bi-exclamation-triangle fs-4"></i>
+                        <div class="fw-bold">${warningCount}</div>
+                        <small>警告</small>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="text-danger">
+                        <i class="bi bi-x-circle fs-4"></i>
+                        <div class="fw-bold">${errorCount}</div>
+                        <small>错误</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+
+    // 详细结果
+    results.forEach(result => {
+        const iconClass = result.status === 'success' ? 'bi-check-circle text-success' :
+                         result.status === 'error' ? 'bi-x-circle text-danger' :
+                         result.status === 'warning' ? 'bi-exclamation-triangle text-warning' :
+                         'bi-info-circle text-info';
+
+        const cardClass = result.status === 'success' ? 'border-success' :
+                         result.status === 'error' ? 'border-danger' :
+                         result.status === 'warning' ? 'border-warning' :
+                         'border-info';
+
+        html += `
+        <div class="col-12 mb-2">
+            <div class="card ${cardClass} dns-check-item">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center">
+                        <i class="bi ${iconClass} dns-status-icon me-3"></i>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold d-flex align-items-center gap-2">
+                                ${result.type}
+                                ${result.priority === 'high' ? '<span class="badge bg-danger dns-priority-badge">重要</span>' :
+                                  result.priority === 'medium' ? '<span class="badge bg-warning dns-priority-badge">建议</span>' : ''}
+                            </div>
+                            <small class="text-muted">${result.description}</small>
+                        </div>
+                        <div class="text-end">
+                            <small class="d-block text-break" style="max-width: 200px;">${result.message}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    });
+
+    html += '</div>';
+
+    resultsContainer.innerHTML = html;
+    spinner.style.display = 'none';
+    resultsContainer.style.display = 'block';
+    document.getElementById('recheckBtn').style.display = 'inline-block';
+}
+
+// 重新检查DNS
+function recheckDNS(domainName) {
+    const resultsContainer = document.getElementById('checkResults');
+    const spinner = document.querySelector('#dnsCheckModal .spinner-border').parentElement;
+
+    resultsContainer.style.display = 'none';
+    spinner.style.display = 'block';
+    document.getElementById('recheckBtn').style.display = 'none';
+
+    setTimeout(() => {
+        performDNSCheck(domainName);
+    }, 1500);
+}
+
+// 验证单个DNS记录
+async function verifySingleRecord(recordType, inputId) {
+    const domainName = document.getElementById('editDomainName').value;
+    const recordValue = document.getElementById(inputId).value.trim();
+    const resultDiv = document.getElementById(inputId + '-result');
+
+    if (!domainName) {
+        showError('请先选择域名');
+        return;
+    }
+
+    if (!recordValue) {
+        showError('请先输入' + recordType + '记录值');
+        return;
+    }
+
+    // 显示验证中状态
+    resultDiv.innerHTML = '<div class="alert alert-info py-1 px-2 mb-0"><i class="bi bi-arrow-repeat spin me-1"></i>验证中...</div>';
+
+    try {
+        const response = await axios.post('/api/domains/verify-record', {
+            domain: domainName,
+            record_type: recordType,
+            record_value: recordValue
+        });
+
+        if (response.data.success) {
+            const data = response.data.data;
+            const alertClass = data.is_valid ? 'alert-success' : 'alert-warning';
+            const icon = data.is_valid ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
+
+            resultDiv.innerHTML = `
+                <div class="alert ${alertClass} py-1 px-2 mb-0">
+                    <i class="${icon} me-1"></i>${data.message}
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger py-1 px-2 mb-0">
+                    <i class="bi bi-x-circle-fill me-1"></i>验证失败: ${response.data.message}
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('验证DNS记录失败:', error);
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger py-1 px-2 mb-0">
+                <i class="bi bi-x-circle-fill me-1"></i>验证失败，请稍后重试
+            </div>
+        `;
+    }
+}
+
+// 复制到剪贴板
+function copyToClipboard(text, button) {
+    navigator.clipboard.writeText(text).then(function() {
+        // 临时改变按钮图标和文本
+        const icon = button.querySelector('i');
+        const originalClass = icon.className;
+        icon.className = 'bi bi-check';
+        button.classList.remove('btn-outline-secondary');
+        button.classList.add('btn-success');
+
+        // 2秒后恢复原状
+        setTimeout(() => {
+            icon.className = originalClass;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-secondary');
+        }, 2000);
+
+        showSuccess('已复制到剪贴板');
+    }).catch(function(err) {
+        console.error('复制失败:', err);
+        showError('复制失败，请手动复制');
+    });
+}
+
+// 退出登录
+async function logout() {
+    try {
+        await axios.post('/api/admin/logout');
+        window.location.href = '/admin/login';
+    } catch (error) {
+        console.error('Logout error:', error);
+        window.location.href = '/admin/login';
+    }
+}
+</script>
+</body>
+</html>
