@@ -178,7 +178,7 @@
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <select class="form-select" id="mailboxSelect" onchange="loadDrafts()">
-                            <option value="">选择邮箱...</option>
+                            <option value="" selected>全部草稿</option>
                         </select>
                     </div>
                     <div class="col-md-6">
@@ -290,6 +290,10 @@
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
             loadMailboxes();
+            // 页面加载时自动加载全部草稿
+            setTimeout(() => {
+                loadDrafts();
+            }, 500);
         });
 
         // 加载邮箱列表
@@ -299,7 +303,7 @@
                 if (response.data.success) {
                     const mailboxes = response.data.data;
                     const select = document.getElementById('mailboxSelect');
-                    select.innerHTML = '<option value="">全部草稿</option>';
+                    select.innerHTML = '<option value="" selected>全部草稿</option>';
 
                     mailboxes.forEach(mailbox => {
                         const option = document.createElement('option');
@@ -307,6 +311,8 @@
                         option.textContent = mailbox.email;
                         select.appendChild(option);
                     });
+
+                    console.log('Mailboxes loaded:', mailboxes.length); // 调试日志
                 }
             } catch (error) {
                 console.error('Failed to load mailboxes:', error);
@@ -319,21 +325,37 @@
             const container = document.getElementById('draftsContainer');
             const actionsDiv = document.getElementById('emailActions');
 
+            // 显示加载状态
+            container.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                    <p class="text-muted mt-3">正在加载草稿...</p>
+                </div>
+            `;
+
             try {
-                // 构建API URL，如果没有选择邮箱则不传mailbox参数
-                let apiUrl = '/api/emails?type=draft';
+                // 构建API URL
+                let apiUrl = '/api/emails?type=draft&limit=100'; // 增加limit以获取更多草稿
                 if (mailbox) {
                     apiUrl += `&mailbox=${encodeURIComponent(mailbox)}`;
                 }
+
+                console.log('Loading drafts from:', apiUrl); // 调试日志
+
                 const response = await axios.get(apiUrl);
+                console.log('Drafts response:', response.data); // 调试日志
+
                 if (response.data.success) {
                     currentDrafts = response.data.data || [];
+                    console.log('Current drafts:', currentDrafts); // 调试日志
                     renderDrafts(currentDrafts);
                 } else {
                     container.innerHTML = `
                         <div class="text-center py-5">
                             <i class="bi bi-exclamation-circle display-1 text-warning"></i>
-                            <p class="text-muted mt-3">加载草稿失败</p>
+                            <p class="text-muted mt-3">加载草稿失败: ${response.data.message || '未知错误'}</p>
                         </div>
                     `;
                 }
@@ -343,6 +365,7 @@
                     <div class="text-center py-5">
                         <i class="bi bi-wifi-off display-1 text-danger"></i>
                         <p class="text-muted mt-3">网络错误，请稍后重试</p>
+                        <p class="text-muted small">错误详情: ${error.message}</p>
                     </div>
                 `;
             }
