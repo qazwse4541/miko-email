@@ -157,6 +157,12 @@
                             </a>
                         </li>
                         <li>
+                            <a href="/drafts" class="nav-link">
+                                <i class="bi bi-file-earmark-text me-2"></i>
+                                草稿箱
+                            </a>
+                        </li>
+                        <li>
                             <a href="/compose" class="nav-link active">
                                 <i class="bi bi-pencil-square me-2"></i>
                                 写邮件
@@ -352,7 +358,7 @@
             });
         }
 
-        // 解析URL参数（用于回复和转发）
+        // 解析URL参数（用于回复、转发和草稿编辑）
         function parseURLParams() {
             const urlParams = new URLSearchParams(window.location.search);
 
@@ -374,6 +380,10 @@
 
             if (urlParams.has('forward')) {
                 loadForwardContent(urlParams.get('forward'));
+            }
+
+            if (urlParams.has('draft_id')) {
+                loadDraftContent(urlParams.get('draft_id'));
             }
         }
 
@@ -471,6 +481,64 @@
             } catch (error) {
                 console.error('加载转发内容失败:', error);
                 showAlert('网络错误，无法加载邮件内容');
+            }
+        }
+
+        // 加载草稿内容
+        async function loadDraftContent(draftId) {
+            try {
+                // 首先需要获取当前用户的邮箱列表，以便确定使用哪个邮箱查询草稿
+                const mailboxResponse = await axios.get('/api/mailboxes');
+                if (!mailboxResponse.data.success || !mailboxResponse.data.data.length) {
+                    showAlert('无法获取邮箱信息');
+                    return;
+                }
+
+                // 使用第一个邮箱作为查询参数（实际应用中可能需要更智能的选择）
+                const firstMailbox = mailboxResponse.data.data[0];
+
+                const response = await axios.get(`/api/drafts/${draftId}`, {
+                    params: { mailbox: firstMailbox.email }
+                });
+
+                if (response.data.success) {
+                    const draft = response.data.data;
+
+                    // 填充表单字段
+                    document.getElementById('fromEmail').value = draft.from_addr || '';
+                    document.getElementById('toEmail').value = draft.to_addr || '';
+                    document.getElementById('subject').value = draft.subject || '';
+
+                    // 解析收件人地址，分离TO、CC、BCC
+                    if (draft.to_addr) {
+                        const addresses = draft.to_addr.split(',').map(addr => addr.trim());
+                        // 简单处理：第一个地址作为TO，其余的暂时也放在TO中
+                        // 实际应用中需要更复杂的逻辑来区分CC和BCC
+                        document.getElementById('toEmail').value = addresses[0] || '';
+                        if (addresses.length > 1) {
+                            document.getElementById('ccEmail').value = addresses.slice(1).join(', ');
+                        }
+                    }
+
+                    // 设置邮件内容
+                    if (draft.body) {
+                        try {
+                            quill.clipboard.dangerouslyPasteHTML(draft.body);
+                        } catch (quillError) {
+                            quill.root.innerHTML = draft.body;
+                        }
+                    }
+
+                    // 保存草稿ID，用于后续更新
+                    window.currentDraftId = draftId;
+
+                    showAlert('草稿加载成功', 'success');
+                } else {
+                    showAlert('获取草稿内容失败: ' + (response.data.message || '未知错误'));
+                }
+            } catch (error) {
+                console.error('加载草稿内容失败:', error);
+                showAlert('网络错误，无法加载草稿内容');
             }
         }
 
@@ -602,8 +670,68 @@
             }
         }
 
-        function saveDraft() {
-            showAlert('草稿保存功能暂未实现');
+        async function saveDraft() {
+            try {
+                // 获取表单数据
+                const fromEmail = document.getElementById('fromEmail').value;
+                const toEmail = document.getElementById('toEmail').value;
+                const ccEmail = document.getElementById('ccEmail').value;
+                const bccEmail = document.getElementById('bccEmail').value;
+                const subject = document.getElementById('subject').value;
+                const content = quill.root.innerHTML;
+
+                // 验证发件人邮箱
+                if (!fromEmail) {
+                    showAlert('请选择发件人邮箱');
+                    return;
+                }
+
+                // 创建表单数据
+                const formData = new FormData();
+                formData.append('from', fromEmail);
+                formData.append('to', toEmail);
+                formData.append('cc', ccEmail);
+                formData.append('bcc', bccEmail);
+                formData.append('subject', subject);
+                formData.append('content', content);
+
+                // 如果是更新现有草稿，添加草稿ID
+                if (window.currentDraftId) {
+                    formData.append('draft_id', window.currentDraftId);
+                }
+
+                // 显示保存中状态
+                const saveBtn = document.querySelector('[onclick="saveDraft()"]');
+                const originalText = saveBtn.innerHTML;
+                saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>保存中...';
+                saveBtn.disabled = true;
+
+                const response = await axios.post('/api/drafts', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+
+                if (response.data.success) {
+                    showAlert('草稿保存成功！');
+                    // 保存草稿ID，用于后续更新
+                    window.currentDraftId = response.data.draft_id;
+                } else {
+                    showAlert(response.data.message || '草稿保存失败');
+                }
+            } catch (error) {
+                console.error('Save draft error:', error);
+                if (error.response && error.response.data) {
+                    showAlert(error.response.data.message || '草稿保存失败');
+                } else {
+                    showAlert('网络错误，请稍后重试');
+                }
+            } finally {
+                // 恢复按钮状态
+                const saveBtn = document.querySelector('[onclick="saveDraft()"]');
+                saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>保存草稿';
+                saveBtn.disabled = false;
+            }
         }
 
         function clearForm() {

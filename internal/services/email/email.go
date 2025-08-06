@@ -2611,6 +2611,61 @@ func (s *Service) SaveEmailToSent(mailboxID int, fromAddr, toAddr, subject, body
 	return err
 }
 
+// SaveDraft 保存草稿
+func (s *Service) SaveDraft(mailboxID int, fromAddr, toAddr, ccAddr, bccAddr, subject, body string) (int64, error) {
+	result, err := s.db.Exec(`
+		INSERT INTO emails (mailbox_id, from_addr, to_addr, subject, body, folder, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, 'draft', ?, ?)
+	`, mailboxID, fromAddr, toAddr, subject, body, time.Now(), time.Now())
+
+	if err != nil {
+		return 0, err
+	}
+
+	return result.LastInsertId()
+}
+
+// UpdateDraft 更新草稿
+func (s *Service) UpdateDraft(draftID int, mailboxID int, fromAddr, toAddr, ccAddr, bccAddr, subject, body string) error {
+	_, err := s.db.Exec(`
+		UPDATE emails
+		SET from_addr = ?, to_addr = ?, subject = ?, body = ?, updated_at = ?
+		WHERE id = ? AND mailbox_id = ? AND folder = 'draft'
+	`, fromAddr, toAddr, subject, body, time.Now(), draftID, mailboxID)
+
+	return err
+}
+
+// GetDraftByID 根据ID获取草稿
+func (s *Service) GetDraftByID(draftID int, mailboxID int) (*models.Email, error) {
+	var email models.Email
+	err := s.db.QueryRow(`
+		SELECT id, mailbox_id, from_addr, to_addr, subject, body, is_read, folder, created_at, updated_at
+		FROM emails
+		WHERE id = ? AND mailbox_id = ? AND folder = 'draft'
+	`, draftID, mailboxID).Scan(
+		&email.ID, &email.MailboxID, &email.FromAddr, &email.ToAddr,
+		&email.Subject, &email.Body, &email.IsRead, &email.Folder,
+		&email.CreatedAt, &email.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &email, nil
+}
+
+// DeleteDraft 删除草稿
+func (s *Service) DeleteDraft(draftID int, mailboxID int) error {
+	_, err := s.db.Exec(`
+		DELETE FROM emails
+		WHERE id = ? AND mailbox_id = ? AND folder = 'draft'
+	`, draftID, mailboxID)
+
+	return err
+}
+
 // parseEmailContent 解析邮件内容
 func (session *SMTPSession) parseEmailContent() (subject, body string) {
 	content := string(session.data)

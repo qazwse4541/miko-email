@@ -149,6 +149,7 @@ func (s *Server) setupRoutes() {
 			webAuth.GET("/forward", webHandler.ForwardPage)
 			webAuth.GET("/inbox", webHandler.InboxPage)
 			webAuth.GET("/sent", webHandler.SentPage)
+			webAuth.GET("/drafts", webHandler.DraftsPage)
 			webAuth.GET("/settings", webHandler.SettingsPage)
 			webAuth.GET("/mailboxes", webHandler.MailboxesPage)
 		}
@@ -199,6 +200,11 @@ func (s *Server) setupRoutes() {
 			apiAuth.POST("/emails/send", emailHandler.SendEmail)
 			apiAuth.DELETE("/emails/:id", emailHandler.DeleteEmail)
 			apiAuth.PUT("/emails/mark-all-read", emailHandler.MarkAllEmailsAsRead)
+
+			// 草稿相关
+			apiAuth.POST("/drafts", emailHandler.SaveDraft)
+			apiAuth.GET("/drafts/:id", emailHandler.GetDraft)
+			apiAuth.DELETE("/drafts/:id", emailHandler.DeleteDraft)
 
 			// 转发规则相关
 			apiAuth.GET("/forward-rules", emailHandler.GetForwardRules)

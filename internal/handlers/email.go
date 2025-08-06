@@ -52,6 +52,16 @@ type SendEmailRequest struct {
 	Content string `form:"content" binding:"required"`
 }
 
+type SaveDraftRequest struct {
+	From    string `form:"from" binding:"required"`
+	To      string `form:"to"`
+	CC      string `form:"cc"`
+	BCC     string `form:"bcc"`
+	Subject string `form:"subject"`
+	Content string `form:"content"`
+	DraftID int    `form:"draft_id"` // 如果是更新草稿，传入草稿ID
+}
+
 type EmailAttachment struct {
 	Filename string
 	Content  []byte
@@ -234,7 +244,7 @@ func (h *EmailHandler) GetEmails(c *gin.Context) {
 
 	// 获取查询参数
 	mailboxEmail := c.Query("mailbox")
-	emailType := c.DefaultQuery("type", "inbox") // inbox, sent, trash
+	emailType := c.DefaultQuery("type", "inbox") // inbox, sent, trash, draft
 	pageStr := c.DefaultQuery("page", "1")
 	limitStr := c.DefaultQuery("limit", "20")
 
@@ -1156,4 +1166,194 @@ func isValidVerificationCode(code string) bool {
 	}
 
 	return true
+}
+
+// SaveDraft 保存草稿
+func (h *EmailHandler) SaveDraft(c *gin.Context) {
+	// 设置正确的Content-Type响应头
+	c.Header("Content-Type", "application/json; charset=utf-8")
+
+	// 手动解析表单数据以确保UTF-8编码正确处理
+	err := c.Request.ParseMultipartForm(32 << 20) // 32MB max memory
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "请求参数错误"})
+		return
+	}
+
+	// 从表单中获取数据
+	req := SaveDraftRequest{
+		From:    c.Request.FormValue("from"),
+		To:      c.Request.FormValue("to"),
+		CC:      c.Request.FormValue("cc"),
+		BCC:     c.Request.FormValue("bcc"),
+		Subject: c.Request.FormValue("subject"),
+		Content: c.Request.FormValue("content"),
+	}
+
+	// 获取草稿ID（如果是更新操作）
+	if draftIDStr := c.Request.FormValue("draft_id"); draftIDStr != "" {
+		if draftID, err := strconv.Atoi(draftIDStr); err == nil {
+			req.DraftID = draftID
+		}
+	}
+
+	// 验证发件人邮箱
+	if req.From == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "发件人邮箱不能为空"})
+		return
+	}
+
+	// 获取用户ID
+	userID := c.GetInt("user_id")
+
+	// 验证发件人邮箱是否属于当前用户
+	fromMailbox, err := h.mailboxService.GetMailboxByEmail(req.From)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "发件人邮箱不存在"})
+		return
+	}
+
+	// 检查邮箱是否属于当前用户
+	if (fromMailbox.UserID != nil && *fromMailbox.UserID != userID) ||
+		(fromMailbox.AdminID != nil && c.GetInt("admin_id") == 0) {
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "无权使用此邮箱"})
+		return
+	}
+
+	// 合并收件人地址
+	toAddresses := req.To
+	if req.CC != "" {
+		if toAddresses != "" {
+			toAddresses += "," + req.CC
+		} else {
+			toAddresses = req.CC
+		}
+	}
+	if req.BCC != "" {
+		if toAddresses != "" {
+			toAddresses += "," + req.BCC
+		} else {
+			toAddresses = req.BCC
+		}
+	}
+
+	var draftID int64
+	if req.DraftID > 0 {
+		// 更新现有草稿
+		err = h.emailService.UpdateDraft(req.DraftID, fromMailbox.ID, req.From, toAddresses, req.CC, req.BCC, req.Subject, req.Content)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "更新草稿失败: " + err.Error()})
+			return
+		}
+		draftID = int64(req.DraftID)
+	} else {
+		// 创建新草稿
+		draftID, err = h.emailService.SaveDraft(fromMailbox.ID, req.From, toAddresses, req.CC, req.BCC, req.Subject, req.Content)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "保存草稿失败: " + err.Error()})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":  true,
+		"message":  "草稿保存成功",
+		"draft_id": draftID,
+	})
+}
+
+// GetDraft 获取草稿详情
+func (h *EmailHandler) GetDraft(c *gin.Context) {
+	c.Header("Content-Type", "application/json; charset=utf-8")
+
+	draftIDStr := c.Param("id")
+	draftID, err := strconv.Atoi(draftIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "无效的草稿ID"})
+		return
+	}
+
+	// 获取用户ID
+	userID := c.GetInt("user_id")
+
+	// 获取邮箱参数
+	mailboxEmail := c.Query("mailbox")
+	if mailboxEmail == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "邮箱参数不能为空"})
+		return
+	}
+
+	// 验证邮箱是否属于当前用户
+	mailbox, err := h.mailboxService.GetMailboxByEmail(mailboxEmail)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "邮箱不存在"})
+		return
+	}
+
+	// 检查邮箱是否属于当前用户
+	if (mailbox.UserID != nil && *mailbox.UserID != userID) ||
+		(mailbox.AdminID != nil && c.GetInt("admin_id") == 0) {
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "无权访问此邮箱"})
+		return
+	}
+
+	// 获取草稿
+	draft, err := h.emailService.GetDraftByID(draftID, mailbox.ID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "message": "草稿不存在"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    draft,
+	})
+}
+
+// DeleteDraft 删除草稿
+func (h *EmailHandler) DeleteDraft(c *gin.Context) {
+	c.Header("Content-Type", "application/json; charset=utf-8")
+
+	draftIDStr := c.Param("id")
+	draftID, err := strconv.Atoi(draftIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "无效的草稿ID"})
+		return
+	}
+
+	// 获取用户ID
+	userID := c.GetInt("user_id")
+
+	// 获取邮箱参数
+	mailboxEmail := c.Query("mailbox")
+	if mailboxEmail == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "邮箱参数不能为空"})
+		return
+	}
+
+	// 验证邮箱是否属于当前用户
+	mailbox, err := h.mailboxService.GetMailboxByEmail(mailboxEmail)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "邮箱不存在"})
+		return
+	}
+
+	// 检查邮箱是否属于当前用户
+	if (mailbox.UserID != nil && *mailbox.UserID != userID) ||
+		(mailbox.AdminID != nil && c.GetInt("admin_id") == 0) {
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "无权访问此邮箱"})
+		return
+	}
+
+	// 删除草稿
+	err = h.emailService.DeleteDraft(draftID, mailbox.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "删除草稿失败: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "草稿删除成功",
+	})
 }

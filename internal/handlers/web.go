@@ -132,6 +132,18 @@ func (h *WebHandler) SentPage(c *gin.Context) {
 	})
 }
 
+// DraftsPage 草稿箱页面
+func (h *WebHandler) DraftsPage(c *gin.Context) {
+	username := c.GetString("username")
+	c.HTML(http.StatusOK, "drafts.html", gin.H{
+		"title":     "草稿箱",
+		"username":  username,
+		"site_name": config.GetSiteName(),
+		"site_logo": config.GetSiteLogo(),
+		"copyright": config.GetCopyright(),
+	})
+}
+
 // SettingsPage 设置页面
 func (h *WebHandler) SettingsPage(c *gin.Context) {
 	username := c.GetString("username")
