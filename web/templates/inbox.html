@@ -445,7 +445,7 @@ async function showEmailDetail(emailId) {
         }
     } catch (error) {
         console.error('Failed to load email detail:', error);
-        alert('加载邮件详情失败');
+        showAlert('加载邮件详情失败');
     }
 }
 
@@ -486,7 +486,7 @@ function refreshEmails() {
 async function markAllRead() {
     const mailbox = document.getElementById('mailboxSelect').value;
     if (!mailbox) {
-        alert('请先选择邮箱');
+        showAlert('请先选择邮箱');
         return;
     }
 
@@ -583,7 +583,7 @@ async function deleteSelectedEmails() {
     const selectedIds = getSelectedEmailIds();
 
     if (selectedIds.length === 0) {
-        alert('请先选择要删除的邮件');
+        showAlert('请先选择要删除的邮件');
         return;
     }
 
@@ -596,18 +596,18 @@ async function deleteSelectedEmails() {
             await axios.delete(`/api/emails/${emailId}`);
         }
 
-        alert(`成功删除 ${selectedIds.length} 封邮件`);
+        showAlert(`成功删除 ${selectedIds.length} 封邮件`);
         // 删除后总是刷新邮件列表，无论是否选择了特定邮箱
         loadEmails();
     } catch (error) {
         console.error('删除邮件失败:', error);
-        alert('删除邮件失败，请重试');
+        showAlert('删除邮件失败，请重试');
     }
 }
 
 async function deleteAllEmails() {
     if (currentEmails.length === 0) {
-        alert('没有邮件可删除');
+        showAlert('没有邮件可删除');
         return;
     }
 
@@ -620,12 +620,12 @@ async function deleteAllEmails() {
             await axios.delete(`/api/emails/${email.id}`);
         }
 
-        alert(`成功删除 ${currentEmails.length} 封邮件`);
+        showAlert(`成功删除 ${currentEmails.length} 封邮件`);
         // 删除后总是刷新邮件列表，无论是否选择了特定邮箱
         loadEmails();
     } catch (error) {
         console.error('删除所有邮件失败:', error);
-        alert('删除邮件失败，请重试');
+        showAlert('删除邮件失败，请重试');
     }
 }
 
@@ -730,6 +730,26 @@ function showToast(message, type = 'info') {
         }
     }, 3000);
 }
+
+// 统一的提示函数
+function showAlert(message) {
+    document.getElementById('alertMessage').textContent = message;
+    const toast = new bootstrap.Toast(document.getElementById('alertToast'));
+    toast.show();
+}
 </script>
+
+<!-- 全局提示框 -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="alertToast" class="toast" role="alert">
+        <div class="toast-header">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong class="me-auto">系统提示</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="alertMessage">
+        </div>
+    </div>
+</div>
 </body>
 </html>

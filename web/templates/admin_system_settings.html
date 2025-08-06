@@ -701,45 +701,9 @@
 
         // 显示提示信息
         function showAlert(message, type) {
-            // 移除现有的alert
-            const existingAlert = document.querySelector('.alert');
-            if (existingAlert) {
-                existingAlert.remove();
-            }
-            
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type} alert-dismissible fade show mt-3`;
-            alertDiv.innerHTML = `
-                <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-
-            // 尝试多个容器位置
-            let container = document.querySelector('main');
-            if (!container) {
-                container = document.querySelector('.container-fluid');
-            }
-            if (!container) {
-                container = document.body;
-            }
-            
-            // 插入到容器的顶部
-            if (container.firstChild) {
-                container.insertBefore(alertDiv, container.firstChild);
-            } else {
-                container.appendChild(alertDiv);
-            }
-
-            // 自动消失
-            setTimeout(() => {
-                if (alertDiv && alertDiv.parentNode) {
-                    alertDiv.remove();
-                }
-            }, 5000);
-            
-            // 滚动到顶部以确保用户能看到提示
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            document.getElementById('alertMessage').textContent = message;
+            const toast = new bootstrap.Toast(document.getElementById('alertToast'));
+            toast.show();
         }
 
         // 退出登录
@@ -753,6 +717,19 @@
             }
         }
     </script>
+
+    <!-- 全局提示框 -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="alertToast" class="toast" role="alert">
+            <div class="toast-header">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong class="me-auto">系统提示</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="alertMessage">
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

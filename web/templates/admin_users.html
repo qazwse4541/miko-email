@@ -377,19 +377,15 @@
     </div>
 </div>
 
-<!-- 提示模态框 -->
-<div class="modal fade" id="alertModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">提示</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="alertMessage">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
-            </div>
+<!-- 全局提示框 -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="alertToast" class="toast" role="alert">
+        <div class="toast-header">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong class="me-auto">系统提示</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="alertMessage">
         </div>
     </div>
 </div>
@@ -802,8 +798,8 @@ function exportUsers() {
 
 function showAlert(message) {
     document.getElementById('alertMessage').textContent = message;
-    const modal = new bootstrap.Modal(document.getElementById('alertModal'));
-    modal.show();
+    const toast = new bootstrap.Toast(document.getElementById('alertToast'));
+    toast.show();
 }
 
 // 批量操作函数

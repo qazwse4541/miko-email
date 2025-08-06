@@ -798,23 +798,9 @@ function refreshMailboxes() {
 }
 
 function showAlert(message) {
-    // 创建临时提示框
-    const alertDiv = document.createElement('div');
-    alertDiv.className = 'alert alert-info alert-dismissible fade show position-fixed';
-    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    document.body.appendChild(alertDiv);
-    
-    // 3秒后自动消失
-    setTimeout(() => {
-        if (alertDiv.parentNode) {
-            alertDiv.remove();
-        }
-    }, 3000);
+    document.getElementById('alertMessage').textContent = message;
+    const toast = new bootstrap.Toast(document.getElementById('alertToast'));
+    toast.show();
 }
 
 async function logout() {
@@ -827,5 +813,18 @@ async function logout() {
     }
 }
 </script>
+
+<!-- 全局提示框 -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="alertToast" class="toast" role="alert">
+        <div class="toast-header">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong class="me-auto">系统提示</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="alertMessage">
+        </div>
+    </div>
+</div>
 </body>
 </html>
