@@ -459,13 +459,24 @@
                         emailContent = '<div style="color: #666; font-style: italic;">此邮件没有正文内容</div>';
                     }
 
+                    // 处理附件信息
+                    let attachmentInfo = '';
+                    if (email.attachments && email.attachments.length > 0) {
+                        attachmentInfo = '<br>附件:<br>';
+                        email.attachments.forEach(attachment => {
+                            attachmentInfo += `📎 ${attachment.filename} (${formatFileSize(attachment.file_size)})<br>`;
+                        });
+                    }
+
                     const forwardContent = `
                 <br><br>
                 -------- 转发邮件 --------<br>
                 发件人: ${email.from_addr || '未知发件人'}<br>
                 收件人: ${email.to_addr || '未知收件人'}<br>
                 发送时间: ${new Date(email.created_at).toLocaleString('zh-CN')}<br>
-                主题: ${email.subject || '无主题'}<br><br>
+                主题: ${email.subject || '无主题'}<br>
+                ${attachmentInfo}
+                <br>
                 ${emailContent}
             `;
 
@@ -475,6 +486,11 @@
                     } catch (quillError) {
                         quill.root.innerHTML = forwardContent;
                     }
+
+                    // 处理附件转发 - 将原邮件的附件添加到当前邮件的附件列表
+                    if (email.attachments && email.attachments.length > 0) {
+                        await addForwardedAttachments(email.attachments);
+                    }
                 } else {
                     showAlert('获取邮件内容失败: ' + (response.data.message || '未知错误'));
                 }
@@ -482,6 +498,40 @@
                 console.error('加载转发内容失败:', error);
                 showAlert('网络错误，无法加载邮件内容');
             }
+        }
+
+        // 添加转发的附件到当前邮件
+        async function addForwardedAttachments(attachments) {
+
+            for (const attachment of attachments) {
+                try {
+                    // 从服务器获取附件内容
+                    const response = await axios.get(`/api/attachments/${attachment.id}`, {
+                        responseType: 'blob'
+                    });
+
+                    // 创建File对象
+                    const file = new File([response.data], attachment.filename, {
+                        type: attachment.content_type
+                    });
+
+                    // 添加到附件列表
+                    addAttachmentToList(file, true); // true表示这是转发的附件
+
+                } catch (error) {
+                    console.error('获取转发附件失败:', attachment.filename, error);
+                    showAlert(`获取转发附件失败: ${attachment.filename}`);
+                }
+            }
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
         // 加载草稿内容
@@ -545,9 +595,33 @@
         // 处理附件选择
         document.getElementById('attachments').addEventListener('change', function (e) {
             const files = Array.from(e.target.files);
-            attachedFiles = files;
-            renderAttachments();
+            files.forEach(file => addAttachmentToList(file, false));
         });
+
+        // 添加附件到列表
+        function addAttachmentToList(file, isForwarded = false) {
+            // 检查文件大小限制（10MB）
+            if (file.size > 10 * 1024 * 1024) {
+                showAlert(`文件 ${file.name} 超过10MB限制`);
+                return;
+            }
+
+            // 检查是否已经存在同名文件
+            const existingIndex = attachedFiles.findIndex(f => f.name === file.name);
+            if (existingIndex !== -1) {
+                // 替换现有文件
+                attachedFiles[existingIndex] = file;
+            } else {
+                // 添加新文件
+                attachedFiles.push(file);
+            }
+
+            renderAttachments();
+
+            if (isForwarded) {
+                showAlert(`已添加转发附件: ${file.name}`, 'success');
+            }
+        }
 
         function renderAttachments() {
             const listContainer = document.getElementById('attachmentsList');
@@ -754,9 +828,21 @@
         }
 
         // 统一的提示函数
-        function showAlert(message) {
+        function showAlert(message, type = 'info') {
             document.getElementById('alertMessage').textContent = message;
             const toast = new bootstrap.Toast(document.getElementById('alertToast'));
+
+            // 根据类型设置不同的样式
+            const toastElement = document.getElementById('alertToast');
+            toastElement.className = 'toast';
+            if (type === 'success') {
+                toastElement.classList.add('bg-success', 'text-white');
+            } else if (type === 'error') {
+                toastElement.classList.add('bg-danger', 'text-white');
+            } else {
+                toastElement.classList.add('bg-info', 'text-white');
+            }
+
             toast.show();
         }
     </script>

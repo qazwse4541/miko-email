@@ -14,7 +14,9 @@ import (
 	"io"
 	"log"
 	"math/big"
+	"mime"
 	"mime/quotedprintable"
+	"path/filepath"
 	"net"
 	"regexp"
 	"strconv"
@@ -2583,11 +2585,11 @@ func (s *Service) SaveEmail(mailboxID int, fromAddr, toAddr, subject, body strin
 }
 
 // SaveEmailWithAttachments 保存邮件和附件到数据库
-func (s *Service) SaveEmailWithAttachments(mailboxID int, fromAddr, toAddr, subject, body string, attachments []models.EmailAttachment) error {
+func (s *Service) SaveEmailWithAttachments(mailboxID int, fromAddr, toAddr, subject, body string, attachments []models.EmailAttachment) (int64, error) {
 	// 开始事务
 	tx, err := s.db.Begin()
 	if err != nil {
-		return fmt.Errorf("开始事务失败: %w", err)
+		return 0, fmt.Errorf("开始事务失败: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -2597,13 +2599,13 @@ func (s *Service) SaveEmailWithAttachments(mailboxID int, fromAddr, toAddr, subj
 		VALUES (?, ?, ?, ?, ?, 'inbox', ?, ?)
 	`, mailboxID, fromAddr, toAddr, subject, body, time.Now(), time.Now())
 	if err != nil {
-		return fmt.Errorf("插入邮件记录失败: %w", err)
+		return 0, fmt.Errorf("插入邮件记录失败: %w", err)
 	}
 
 	// 获取邮件ID
 	emailID, err := result.LastInsertId()
 	if err != nil {
-		return fmt.Errorf("获取邮件ID失败: %w", err)
+		return 0, fmt.Errorf("获取邮件ID失败: %w", err)
 	}
 
 	// 保存附件
@@ -2613,19 +2615,21 @@ func (s *Service) SaveEmailWithAttachments(mailboxID int, fromAddr, toAddr, subj
 			VALUES (?, ?, ?, ?, ?, ?)
 		`, emailID, attachment.Filename, attachment.ContentType, attachment.FileSize, attachment.Content, time.Now())
 		if err != nil {
-			return fmt.Errorf("保存附件失败 [%s]: %w", attachment.Filename, err)
+			return 0, fmt.Errorf("保存附件失败 [%s]: %w", attachment.Filename, err)
 		}
 		log.Printf("✅ 附件保存成功: %s (%d bytes)", attachment.Filename, attachment.FileSize)
 	}
 
 	// 提交事务
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("提交事务失败: %w", err)
+		return 0, fmt.Errorf("提交事务失败: %w", err)
 	}
 
 	log.Printf("✅ 邮件和 %d 个附件保存成功", len(attachments))
-	return nil
+	return emailID, nil
 }
+
+
 
 // GetEmailAttachments 获取邮件的附件列表
 func (s *Service) GetEmailAttachments(emailID int) ([]models.EmailAttachment, error) {
@@ -2764,12 +2768,19 @@ func (session *SMTPSession) saveEmail() error {
 			}
 
 			// 根据是否有附件选择保存方法
+			var emailID int64
 			if len(session.attachments) > 0 {
 				log.Printf("准备保存邮件和 %d 个附件到数据库", len(session.attachments))
-				err = session.server.SaveEmailWithAttachments(mailboxID, session.from, to, subject, body, session.attachments)
+				emailID, err = session.server.SaveEmailWithAttachments(mailboxID, session.from, to, subject, body, session.attachments)
 			} else {
 				log.Printf("准备保存邮件到数据库 - Body: %s", body)
 				err = session.server.SaveEmail(mailboxID, session.from, to, subject, body)
+				// 对于没有附件的邮件，我们需要获取邮件ID
+				if err == nil {
+					// 查询刚刚插入的邮件ID
+					err = session.server.db.QueryRow("SELECT id FROM emails WHERE mailbox_id = ? AND from_addr = ? AND to_addr = ? AND subject = ? ORDER BY created_at DESC LIMIT 1",
+						mailboxID, session.from, to, subject).Scan(&emailID)
+				}
 			}
 
 			if err != nil {
@@ -2777,10 +2788,10 @@ func (session *SMTPSession) saveEmail() error {
 				return err
 			}
 
-			log.Printf("✅ 邮件保存成功 - 邮箱ID: %d, 主题: %s, 附件数: %d", mailboxID, subject, len(session.attachments))
+			log.Printf("✅ 邮件保存成功 - 邮箱ID: %d, 邮件ID: %d, 主题: %s, 附件数: %d", mailboxID, emailID, subject, len(session.attachments))
 
 			// 检查并执行转发规则
-			session.server.processForwardRules(to, session.from, subject, body)
+			session.server.processForwardRulesWithAttachments(emailID, to, session.from, subject, body, session.attachments)
 		} else {
 			// 外部邮箱，发送到外部
 			log.Printf("发送邮件到外部邮箱: %s", to)
@@ -2986,6 +2997,11 @@ func (s *Service) ProcessForwardRules(sourceEmail, fromAddr, subject, body strin
 	s.processForwardRules(sourceEmail, fromAddr, subject, body)
 }
 
+// ProcessForwardRulesWithAttachments 处理邮件转发规则（包含附件，公开方法）
+func (s *Service) ProcessForwardRulesWithAttachments(emailID int64, sourceEmail, fromAddr, subject, body string, attachments []models.EmailAttachment) {
+	s.processForwardRulesWithAttachments(emailID, sourceEmail, fromAddr, subject, body, attachments)
+}
+
 // processForwardRules 处理邮件转发规则
 func (s *Service) processForwardRules(sourceEmail, fromAddr, subject, body string) {
 	// 获取该邮箱的活跃转发规则
@@ -3039,6 +3055,68 @@ func (s *Service) processForwardRules(sourceEmail, fromAddr, subject, body strin
 	}
 }
 
+// processForwardRulesWithAttachments 处理邮件转发规则（包含附件）
+func (s *Service) processForwardRulesWithAttachments(emailID int64, sourceEmail, fromAddr, subject, body string, attachments []models.EmailAttachment) {
+	// 获取该邮箱的活跃转发规则
+	rules, err := s.forwardService.GetActiveForwardRules(sourceEmail)
+	if err != nil {
+		log.Printf("获取转发规则失败: %v", err)
+		return
+	}
+
+	if len(rules) == 0 {
+		log.Printf("邮箱 %s 没有活跃的转发规则", sourceEmail)
+		return
+	}
+
+	log.Printf("找到 %d 个转发规则，开始处理转发（包含 %d 个附件）", len(rules), len(attachments))
+
+	for _, rule := range rules {
+		log.Printf("处理转发规则: %s -> %s", rule.SourceEmail, rule.TargetEmail)
+
+		// 构建转发邮件的主题
+		forwardSubject := subject
+		if rule.SubjectPrefix != "" {
+			forwardSubject = rule.SubjectPrefix + " " + subject
+		}
+
+		// 构建转发邮件的内容
+		forwardBody := fmt.Sprintf(`
+-------- 转发邮件 --------
+发件人: %s
+收件人: %s
+主题: %s
+时间: %s
+
+%s
+`, fromAddr, sourceEmail, subject, time.Now().Format("2006-01-02 15:04:05"), body)
+
+		// 决定是否转发附件
+		var forwardAttachments []models.EmailAttachment
+		if rule.ForwardAttachments && len(attachments) > 0 {
+			forwardAttachments = attachments
+			log.Printf("转发规则允许转发附件，将转发 %d 个附件", len(attachments))
+		} else {
+			log.Printf("转发规则不允许转发附件或没有附件")
+		}
+
+		// 发送转发邮件（包含附件）
+		err := s.sendForwardEmailWithAttachments(rule.SourceEmail, rule.TargetEmail, forwardSubject, forwardBody, forwardAttachments)
+		if err != nil {
+			log.Printf("转发邮件失败: %v", err)
+			continue
+		}
+
+		// 更新转发次数
+		err = s.forwardService.IncrementForwardCount(rule.ID)
+		if err != nil {
+			log.Printf("更新转发次数失败: %v", err)
+		}
+
+		log.Printf("✅ 邮件转发成功: %s -> %s（附件: %d 个）", rule.SourceEmail, rule.TargetEmail, len(forwardAttachments))
+	}
+}
+
 // sendForwardEmail 发送转发邮件
 func (s *Service) sendForwardEmail(fromAddr, toAddr, subject, body string) error {
 	// 检查目标邮箱是否是本域邮箱
@@ -3062,6 +3140,49 @@ func (s *Service) sendForwardEmail(fromAddr, toAddr, subject, body string) error
 				return fmt.Errorf("外部邮箱转发失败: %w", err)
 			}
 			log.Printf("✅ 外部邮箱转发成功: %s -> %s", fromAddr, toAddr)
+			return nil
+		} else {
+			return fmt.Errorf("无效的外部邮箱地址: %s", toAddr)
+		}
+	} else {
+		return fmt.Errorf("查询目标邮箱失败: %w", err)
+	}
+}
+
+// sendForwardEmailWithAttachments 发送转发邮件（包含附件）
+func (s *Service) sendForwardEmailWithAttachments(fromAddr, toAddr, subject, body string, attachments []models.EmailAttachment) error {
+	// 检查目标邮箱是否是本域邮箱
+	var mailboxID int
+	err := s.db.QueryRow("SELECT id FROM mailboxes WHERE email = ? AND is_active = 1", toAddr).Scan(&mailboxID)
+
+	if err == nil {
+		// 目标是本域邮箱，直接保存到收件箱（包含附件）
+		log.Printf("转发到本域邮箱: %s（附件: %d 个）", toAddr, len(attachments))
+		_, err := s.SaveEmailWithAttachments(mailboxID, fromAddr, toAddr, subject, body, attachments)
+		return err
+	} else if err == sql.ErrNoRows {
+		// 目标是外部邮箱，通过SMTP发送
+		log.Printf("转发到外部邮箱: %s（附件: %d 个）", toAddr, len(attachments))
+
+		// 检查是否为外部邮箱
+		if s.smtpClient.IsExternalEmail(toAddr) {
+			// 使用SMTP客户端发送到外部邮箱（包含附件）
+			if len(attachments) > 0 {
+				// 构建MIME邮件内容
+				mimeContent := s.buildMIMEMessageForForward(fromAddr, toAddr, subject, body, attachments)
+				err := s.smtpClient.SendMIMEEmail(fromAddr, toAddr, mimeContent)
+				if err != nil {
+					log.Printf("外部邮箱转发失败（含附件）: %v", err)
+					return fmt.Errorf("外部邮箱转发失败（含附件）: %w", err)
+				}
+			} else {
+				err := s.smtpClient.SendEmail(fromAddr, toAddr, subject, body)
+				if err != nil {
+					log.Printf("外部邮箱转发失败: %v", err)
+					return fmt.Errorf("外部邮箱转发失败: %w", err)
+				}
+			}
+			log.Printf("✅ 外部邮箱转发成功: %s -> %s（附件: %d 个）", fromAddr, toAddr, len(attachments))
 			return nil
 		} else {
 			return fmt.Errorf("无效的外部邮箱地址: %s", toAddr)
@@ -3734,4 +3855,62 @@ func (s *Service) GetEmailByIDForUser(emailID, userID int) (*models.Email, error
 	}
 
 	return &email, nil
+}
+
+// buildMIMEMessageForForward 构建转发邮件的MIME消息（包含附件）
+func (s *Service) buildMIMEMessageForForward(from, to, subject, body string, attachments []models.EmailAttachment) string {
+	var message strings.Builder
+	boundary := fmt.Sprintf("boundary_%d", time.Now().UnixNano())
+
+	// 邮件头部
+	message.WriteString(fmt.Sprintf("From: %s\r\n", encodeMIMEHeader(from)))
+	message.WriteString(fmt.Sprintf("To: %s\r\n", encodeMIMEHeader(to)))
+	message.WriteString(fmt.Sprintf("Subject: %s\r\n", encodeMIMEHeader(subject)))
+	message.WriteString("MIME-Version: 1.0\r\n")
+	message.WriteString(fmt.Sprintf("Content-Type: multipart/mixed; boundary=\"%s\"\r\n", boundary))
+	message.WriteString("\r\n")
+
+	// 邮件正文部分
+	message.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+	message.WriteString("Content-Type: text/html; charset=utf-8\r\n")
+	message.WriteString("Content-Transfer-Encoding: 8bit\r\n")
+	message.WriteString("\r\n")
+	message.WriteString(body)
+	message.WriteString("\r\n")
+
+	// 附件部分
+	for _, attachment := range attachments {
+		message.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+
+		// 确定MIME类型
+		mimeType := attachment.ContentType
+		if mimeType == "" {
+			mimeType = mime.TypeByExtension(filepath.Ext(attachment.Filename))
+			if mimeType == "" {
+				mimeType = "application/octet-stream"
+			}
+		}
+
+		message.WriteString(fmt.Sprintf("Content-Type: %s\r\n", mimeType))
+		message.WriteString("Content-Transfer-Encoding: base64\r\n")
+		message.WriteString(fmt.Sprintf("Content-Disposition: attachment; filename=\"%s\"\r\n", attachment.Filename))
+		message.WriteString("\r\n")
+
+		// Base64编码附件内容
+		encoded := base64.StdEncoding.EncodeToString(attachment.Content)
+		// 每76个字符换行
+		for i := 0; i < len(encoded); i += 76 {
+			end := i + 76
+			if end > len(encoded) {
+				end = len(encoded)
+			}
+			message.WriteString(encoded[i:end])
+			message.WriteString("\r\n")
+		}
+	}
+
+	// 结束边界
+	message.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
+
+	return message.String()
 }
