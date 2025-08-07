@@ -131,7 +131,7 @@ func GetSiteName() string {
 	if GlobalYAMLConfig != nil {
 		return GlobalYAMLConfig.GetSiteName()
 	}
-	return getEnv("SITE_NAME", "Miko邮箱系统")
+	return getEnv("SITE_NAME", "思.凡邮箱系统")
 }
 
 // GetSiteLogo 获取网站Logo
@@ -147,7 +147,7 @@ func GetCopyright() string {
 	if GlobalYAMLConfig != nil {
 		return GlobalYAMLConfig.GetCopyright()
 	}
-	return getEnv("COPYRIGHT", "© 2024 Miko邮箱系统. All rights reserved.")
+	return getEnv("COPYRIGHT", "© 2024 思.凡邮箱系统. All rights reserved.")
 }
 
 // IsMaintenanceMode 检查是否为维护模式

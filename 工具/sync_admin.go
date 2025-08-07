@@ -35,7 +35,7 @@ func main() {
 }
 
 func showUsage() {
-	fmt.Println("Miko邮箱管理员同步工具")
+	fmt.Println("思.凡邮箱管理员同步工具")
 	fmt.Println("")
 	fmt.Println("用法:")
 	fmt.Println("  go run tools/sync_admin.go <命令>")

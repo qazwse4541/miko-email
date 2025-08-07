@@ -33,7 +33,7 @@ func main() {
 }
 
 func showUsage() {
-	fmt.Println("Miko邮箱配置管理工具")
+	fmt.Println("思.凡邮箱配置管理工具")
 	fmt.Println("")
 	fmt.Println("用法:")
 	fmt.Println("  go run tools/config_manager.go <命令>")
@@ -51,7 +51,7 @@ func showUsage() {
 }
 
 func showConfig() {
-	fmt.Println("=== Miko邮箱系统配置 ===")
+	fmt.Println("=== 思.凡邮箱系统配置 ===")
 	fmt.Println("")
 
 	// 加载配置

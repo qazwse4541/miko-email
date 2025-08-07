@@ -258,7 +258,7 @@ func (yc *YAMLConfig) GetSiteName() string {
 	if yc.System.SiteName != "" {
 		return yc.System.SiteName
 	}
-	return "Miko邮箱系统"
+	return "思.凡邮箱系统"
 }
 
 // GetSiteLogo 获取网站Logo
@@ -274,5 +274,5 @@ func (yc *YAMLConfig) GetCopyright() string {
 	if yc.System.Copyright != "" {
 		return yc.System.Copyright
 	}
-	return "© 2024 Miko邮箱系统. All rights reserved."
+	return "© 2024 思.凡邮箱系统. All rights reserved."
 }

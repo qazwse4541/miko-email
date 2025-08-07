@@ -116,7 +116,7 @@ func (s *Service) sendWithTLS(addr, to string, msg []byte) error {
 
 // SendPasswordResetEmail 发送密码重置邮件
 func (s *Service) SendPasswordResetEmail(to, username, resetURL string) error {
-	subject := "密码重置 - Miko邮箱系统"
+	subject := "密码重置 - 思.凡邮箱系统"
 	
 	body := fmt.Sprintf(`
 <!DOCTYPE html>
@@ -214,7 +214,7 @@ func (s *Service) SendPasswordResetEmail(to, username, resetURL string) error {
     <div class="container">
         <div class="header">
             <div class="logo">📧</div>
-            <h1 class="title">Miko邮箱系统</h1>
+            <h1 class="title">思.凡邮箱系统</h1>
         </div>
         
         <div class="content">
@@ -249,7 +249,7 @@ func (s *Service) SendPasswordResetEmail(to, username, resetURL string) error {
         <div class="footer">
             <p>此邮件由系统自动发送，请勿回复。</p>
             <p>如有疑问，请联系系统管理员。</p>
-            <p>&copy; 2024 Miko邮箱系统 - YouDDNS</p>
+            <p>&copy; 2024 思.凡邮箱系统</p>
         </div>
     </div>
 </body>

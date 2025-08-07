@@ -63,7 +63,7 @@ system:
     site_logo: ""
     site_description: 专业的邮箱管理系统
     site_keywords: 邮箱,邮件,管理系统
-    copyright: © 2024 Miko邮箱系统. All rights reserved.
+    copyright: © 2024 思.凡邮箱系统. All rights reserved.
     contact_email: 2014131458@qq.com
     allow_self_registration: true
     default_mailbox_quota: 1000
