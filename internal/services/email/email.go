@@ -252,7 +252,7 @@ func (s *Service) generateSelfSignedCert() (tls.Certificate, error) {
 // StartIMAPServer 启动IMAP服务器
 func (s *Service) StartIMAPServer(port string) error {
 	log.Printf("IMAP server starting on port %s", port)
-	
+
 	listener, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		return fmt.Errorf("failed to start IMAP server: %w", err)
@@ -272,10 +272,52 @@ func (s *Service) StartIMAPServer(port string) error {
 	}
 }
 
+// StartIMAPSSLServer 启动IMAP SSL服务器
+func (s *Service) StartIMAPSSLServer(port string) error {
+	log.Printf("IMAP SSL server starting on port %s", port)
+
+	// 创建自签名证书
+	cert, err := s.generateSelfSignedCert()
+	if err != nil {
+		log.Printf("警告：无法生成SSL证书，IMAP SSL端口将使用普通连接: %v", err)
+		return s.StartIMAPServer(port)
+	}
+
+	// 获取配置中的域名
+	cfg := config.Load()
+	serverName := cfg.Domain
+	if serverName == "" || serverName == "localhost" {
+		serverName = "mail.local"
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ServerName:   serverName,
+	}
+
+	listener, err := tls.Listen("tcp", ":"+port, tlsConfig)
+	if err != nil {
+		return fmt.Errorf("failed to start IMAP SSL server: %w", err)
+	}
+	defer listener.Close()
+
+	log.Printf("IMAP SSL server listening on port %s (SSL)", port)
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Printf("IMAP SSL connection error: %v", err)
+			continue
+		}
+
+		go s.handleIMAPConnection(conn)
+	}
+}
+
 // StartPOP3Server 启动POP3服务器
 func (s *Service) StartPOP3Server(port string) error {
 	log.Printf("POP3 server starting on port %s", port)
-	
+
 	listener, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		return fmt.Errorf("failed to start POP3 server: %w", err)
@@ -288,6 +330,48 @@ func (s *Service) StartPOP3Server(port string) error {
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Printf("POP3 connection error: %v", err)
+			continue
+		}
+
+		go s.handlePOP3Connection(conn)
+	}
+}
+
+// StartPOP3SSLServer 启动POP3 SSL服务器
+func (s *Service) StartPOP3SSLServer(port string) error {
+	log.Printf("POP3 SSL server starting on port %s", port)
+
+	// 创建自签名证书
+	cert, err := s.generateSelfSignedCert()
+	if err != nil {
+		log.Printf("警告：无法生成SSL证书，POP3 SSL端口将使用普通连接: %v", err)
+		return s.StartPOP3Server(port)
+	}
+
+	// 获取配置中的域名
+	cfg := config.Load()
+	serverName := cfg.Domain
+	if serverName == "" || serverName == "localhost" {
+		serverName = "mail.local"
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ServerName:   serverName,
+	}
+
+	listener, err := tls.Listen("tcp", ":"+port, tlsConfig)
+	if err != nil {
+		return fmt.Errorf("failed to start POP3 SSL server: %w", err)
+	}
+	defer listener.Close()
+
+	log.Printf("POP3 SSL server listening on port %s (SSL)", port)
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Printf("POP3 SSL connection error: %v", err)
 			continue
 		}
 

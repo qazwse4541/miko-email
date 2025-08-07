@@ -38,15 +38,31 @@ func main() {
 		}(port)
 	}
 
+	// 启动IMAP服务器（普通端口）
 	go func() {
 		if err := emailService.StartIMAPServer(cfg.IMAPPort); err != nil {
 			log.Printf("IMAP server error: %v", err)
 		}
 	}()
 
+	// 启动IMAP SSL服务器（安全端口）
+	go func() {
+		if err := emailService.StartIMAPSSLServer(cfg.IMAPSecurePort); err != nil {
+			log.Printf("IMAP SSL server error: %v", err)
+		}
+	}()
+
+	// 启动POP3服务器（普通端口）
 	go func() {
 		if err := emailService.StartPOP3Server(cfg.POP3Port); err != nil {
 			log.Printf("POP3 server error: %v", err)
+		}
+	}()
+
+	// 启动POP3 SSL服务器（安全端口）
+	go func() {
+		if err := emailService.StartPOP3SSLServer(cfg.POP3SecurePort); err != nil {
+			log.Printf("POP3 SSL server error: %v", err)
 		}
 	}()
 

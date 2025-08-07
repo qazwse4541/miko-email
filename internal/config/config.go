@@ -10,7 +10,9 @@ type Config struct {
 	SMTPPort587     string   // SMTP提交端口
 	SMTPPort465     string   // SMTPS端口
 	IMAPPort        string
+	IMAPSecurePort  string   // IMAP SSL端口
 	POP3Port        string
+	POP3SecurePort  string   // POP3 SSL端口
 	DatabasePath    string
 	SessionKey      string
 	Domain          string
@@ -34,7 +36,9 @@ func Load() *Config {
 		SMTPPort587:     getEnv("SMTP_PORT_587", "587"),   // SMTP提交端口
 		SMTPPort465:     getEnv("SMTP_PORT_465", "465"),   // SMTPS端口
 		IMAPPort:        getEnv("IMAP_PORT", "143"),
+		IMAPSecurePort:  getEnv("IMAP_SECURE_PORT", "993"), // IMAP SSL端口
 		POP3Port:        getEnv("POP3_PORT", "110"),
+		POP3SecurePort:  getEnv("POP3_SECURE_PORT", "995"), // POP3 SSL端口
 		DatabasePath:    getEnv("DATABASE_PATH", "./miko_email.db"),
 		SessionKey:      getEnv("SESSION_KEY", "miko-email-secret-key-change-in-production"),
 		Domain:          getEnv("DOMAIN", "localhost"),
