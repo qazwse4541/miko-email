@@ -201,6 +201,9 @@ func (s *Server) setupRoutes() {
 			apiAuth.DELETE("/emails/:id", emailHandler.DeleteEmail)
 			apiAuth.PUT("/emails/mark-all-read", emailHandler.MarkAllEmailsAsRead)
 
+			// 附件相关
+			apiAuth.GET("/attachments/:id", emailHandler.DownloadAttachment)
+
 			// 草稿相关
 			apiAuth.POST("/drafts", emailHandler.SaveDraft)
 			apiAuth.GET("/drafts/:id", emailHandler.GetDraft)

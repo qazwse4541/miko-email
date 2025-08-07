@@ -1357,3 +1357,53 @@ func (h *EmailHandler) DeleteDraft(c *gin.Context) {
 		"message": "草稿删除成功",
 	})
 }
+
+// DownloadAttachment 下载附件
+func (h *EmailHandler) DownloadAttachment(c *gin.Context) {
+	// 获取当前用户信息
+	userID := c.GetInt("user_id")
+	isAdmin := c.GetBool("is_admin")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": "未登录"})
+		return
+	}
+
+	// 获取附件ID
+	attachmentIDStr := c.Param("id")
+	attachmentID, err := strconv.Atoi(attachmentIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "无效的附件ID"})
+		return
+	}
+
+	// 验证用户是否有权限访问这个附件
+	attachment, err := h.emailService.GetAttachmentWithPermissionCheck(attachmentID, userID, isAdmin)
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "无权访问此附件"})
+		return
+	}
+
+	// 获取附件内容
+	content, err := h.emailService.GetAttachmentContent(attachmentID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "获取附件内容失败"})
+		return
+	}
+
+	// 设置响应头
+	c.Header("Content-Type", attachment.ContentType)
+
+	// 检查是否是图片类型，如果是则内联显示，否则作为附件下载
+	if strings.HasPrefix(attachment.ContentType, "image/") {
+		// 图片内联显示
+		c.Header("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", attachment.Filename))
+	} else {
+		// 其他文件作为附件下载
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", attachment.Filename))
+	}
+
+	c.Header("Content-Length", fmt.Sprintf("%d", attachment.FileSize))
+
+	// 返回文件内容
+	c.Data(http.StatusOK, attachment.ContentType, content)
+}

@@ -284,6 +284,10 @@
                 <div class="mb-3">
                     <strong>时间：</strong> <span id="emailDate"></span>
                 </div>
+                <div class="mb-3" id="emailAttachmentsSection" style="display: none;">
+                    <strong>附件：</strong>
+                    <div id="emailAttachments" class="mt-2"></div>
+                </div>
                 <hr>
                 <div id="emailContent"></div>
             </div>
@@ -397,6 +401,7 @@ function renderEmails(emails) {
                 </div>
                 <div class="col-md-4" onclick="showEmailDetail('${email.id}')">
                     <span class="${email.is_read ? 'text-muted' : 'fw-bold'}">${escapeHtml(email.subject || '无主题')}</span>
+                    ${email.attachments && email.attachments.length > 0 ? '<i class="bi bi-paperclip text-muted ms-2" title="有附件"></i>' : ''}
                 </div>
                 <div class="col-md-3">
                     <div class="verification-code-container" data-email-id="${email.id}">
@@ -440,6 +445,48 @@ async function showEmailDetail(emailId) {
             document.getElementById('emailFrom').textContent = email.from_addr || '未知发件人';
             document.getElementById('emailTo').textContent = email.to_addr || '';
             document.getElementById('emailDate').textContent = formatDate(email.created_at);
+
+            // 显示附件
+            const attachmentsSection = document.getElementById('emailAttachmentsSection');
+            const attachmentsContainer = document.getElementById('emailAttachments');
+
+            if (email.attachments && email.attachments.length > 0) {
+                attachmentsSection.style.display = 'block';
+                attachmentsContainer.innerHTML = '';
+
+                email.attachments.forEach(attachment => {
+                    const attachmentElement = document.createElement('div');
+                    attachmentElement.className = 'attachment-item d-flex align-items-center mb-2 p-2 border rounded';
+
+                    // 根据文件类型显示不同图标
+                    let icon = 'bi-file-earmark';
+                    if (attachment.content_type.startsWith('image/')) {
+                        icon = 'bi-file-earmark-image';
+                    } else if (attachment.content_type.includes('pdf')) {
+                        icon = 'bi-file-earmark-pdf';
+                    } else if (attachment.content_type.includes('word')) {
+                        icon = 'bi-file-earmark-word';
+                    } else if (attachment.content_type.includes('excel') || attachment.content_type.includes('spreadsheet')) {
+                        icon = 'bi-file-earmark-excel';
+                    }
+
+                    attachmentElement.innerHTML = `
+                        <i class="bi ${icon} me-2"></i>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold">${attachment.filename}</div>
+                            <small class="text-muted">${formatFileSize(attachment.file_size)}</small>
+                        </div>
+                        <a href="/api/attachments/${attachment.id}" class="btn btn-sm btn-outline-primary" download="${attachment.filename}">
+                            <i class="bi bi-download"></i> 下载
+                        </a>
+                    `;
+
+                    attachmentsContainer.appendChild(attachmentElement);
+                });
+            } else {
+                attachmentsSection.style.display = 'none';
+            }
+
             // 直接显示HTML内容，因为邮件内容来自富文本编辑器
             document.getElementById('emailContent').innerHTML = email.body || '无内容';
 
@@ -549,6 +596,14 @@ function formatDate(dateString) {
     } else {
         return date.toLocaleDateString('zh-CN');
     }
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 function escapeHtml(text) {

@@ -26,6 +26,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/text/encoding"
 
+	"miko-email/internal/models"
 	"miko-email/internal/services/forward"
 	"miko-email/internal/services/smtp"
 	"golang.org/x/text/encoding/charmap"
@@ -37,7 +38,6 @@ import (
 
 	"github.com/jhillyerd/enmime/v2"
 	"miko-email/internal/config"
-	"miko-email/internal/models"
 )
 
 // ConnectionTracker 连接跟踪器
@@ -466,6 +466,7 @@ type SMTPSession struct {
 	authenticated bool
 	tlsEnabled    bool
 	isSSL         bool
+	attachments   []models.EmailAttachment // 附件列表
 }
 
 // handle 处理SMTP会话
@@ -2581,6 +2582,165 @@ func (s *Service) SaveEmail(mailboxID int, fromAddr, toAddr, subject, body strin
 	return err
 }
 
+// SaveEmailWithAttachments 保存邮件和附件到数据库
+func (s *Service) SaveEmailWithAttachments(mailboxID int, fromAddr, toAddr, subject, body string, attachments []models.EmailAttachment) error {
+	// 开始事务
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("开始事务失败: %w", err)
+	}
+	defer tx.Rollback()
+
+	// 插入邮件记录
+	result, err := tx.Exec(`
+		INSERT INTO emails (mailbox_id, from_addr, to_addr, subject, body, folder, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, 'inbox', ?, ?)
+	`, mailboxID, fromAddr, toAddr, subject, body, time.Now(), time.Now())
+	if err != nil {
+		return fmt.Errorf("插入邮件记录失败: %w", err)
+	}
+
+	// 获取邮件ID
+	emailID, err := result.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("获取邮件ID失败: %w", err)
+	}
+
+	// 保存附件
+	for _, attachment := range attachments {
+		_, err := tx.Exec(`
+			INSERT INTO email_attachments (email_id, filename, content_type, file_size, content, created_at)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`, emailID, attachment.Filename, attachment.ContentType, attachment.FileSize, attachment.Content, time.Now())
+		if err != nil {
+			return fmt.Errorf("保存附件失败 [%s]: %w", attachment.Filename, err)
+		}
+		log.Printf("✅ 附件保存成功: %s (%d bytes)", attachment.Filename, attachment.FileSize)
+	}
+
+	// 提交事务
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("提交事务失败: %w", err)
+	}
+
+	log.Printf("✅ 邮件和 %d 个附件保存成功", len(attachments))
+	return nil
+}
+
+// GetEmailAttachments 获取邮件的附件列表
+func (s *Service) GetEmailAttachments(emailID int) ([]models.EmailAttachment, error) {
+	rows, err := s.db.Query(`
+		SELECT id, email_id, filename, content_type, file_size, created_at
+		FROM email_attachments
+		WHERE email_id = ?
+		ORDER BY created_at ASC
+	`, emailID)
+	if err != nil {
+		return nil, fmt.Errorf("查询附件失败: %w", err)
+	}
+	defer rows.Close()
+
+	var attachments []models.EmailAttachment
+	for rows.Next() {
+		var attachment models.EmailAttachment
+		err := rows.Scan(
+			&attachment.ID,
+			&attachment.EmailID,
+			&attachment.Filename,
+			&attachment.ContentType,
+			&attachment.FileSize,
+			&attachment.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("扫描附件记录失败: %w", err)
+		}
+		attachments = append(attachments, attachment)
+	}
+
+	return attachments, nil
+}
+
+// replaceCIDReferences 替换邮件内容中的cid:引用为实际的附件链接
+func (s *Service) replaceCIDReferences(body string, attachments []models.EmailAttachment) string {
+	if len(attachments) == 0 {
+		return body
+	}
+
+	// 遍历所有附件，查找cid:引用并替换
+	for _, attachment := range attachments {
+		// 文件名本身就是Content-ID
+		filename := attachment.Filename
+
+		// 替换cid:引用
+		cidRef := fmt.Sprintf("cid:%s", filename)
+		attachmentURL := fmt.Sprintf("/api/attachments/%d", attachment.ID)
+
+		// 替换所有出现的cid:引用
+		body = strings.ReplaceAll(body, cidRef, attachmentURL)
+
+		log.Printf("替换CID引用: %s -> %s", cidRef, attachmentURL)
+	}
+
+	return body
+}
+
+// GetAttachmentContent 获取附件内容
+func (s *Service) GetAttachmentContent(attachmentID int) ([]byte, error) {
+	var content []byte
+	err := s.db.QueryRow(`
+		SELECT content FROM email_attachments WHERE id = ?
+	`, attachmentID).Scan(&content)
+	if err != nil {
+		return nil, fmt.Errorf("获取附件内容失败: %w", err)
+	}
+	return content, nil
+}
+
+// GetAttachmentWithPermissionCheck 获取附件信息并检查权限
+func (s *Service) GetAttachmentWithPermissionCheck(attachmentID, userID int, isAdmin bool) (*models.EmailAttachment, error) {
+	var attachment models.EmailAttachment
+	var query string
+	var args []interface{}
+
+	if isAdmin {
+		// 管理员可以访问所有附件
+		query = `
+			SELECT a.id, a.email_id, a.filename, a.content_type, a.file_size, a.created_at
+			FROM email_attachments a
+			WHERE a.id = ?
+		`
+		args = []interface{}{attachmentID}
+	} else {
+		// 普通用户只能访问自己邮箱的附件
+		query = `
+			SELECT a.id, a.email_id, a.filename, a.content_type, a.file_size, a.created_at
+			FROM email_attachments a
+			JOIN emails e ON a.email_id = e.id
+			JOIN mailboxes m ON e.mailbox_id = m.id
+			WHERE a.id = ? AND m.user_id = ?
+		`
+		args = []interface{}{attachmentID, userID}
+	}
+
+	err := s.db.QueryRow(query, args...).Scan(
+		&attachment.ID,
+		&attachment.EmailID,
+		&attachment.Filename,
+		&attachment.ContentType,
+		&attachment.FileSize,
+		&attachment.CreatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("附件不存在或无权访问")
+		}
+		return nil, fmt.Errorf("查询附件失败: %w", err)
+	}
+
+	return &attachment, nil
+}
+
 // saveEmail 保存邮件到数据库
 func (session *SMTPSession) saveEmail() error {
 	// 添加Received头部到邮件数据
@@ -2603,19 +2763,21 @@ func (session *SMTPSession) saveEmail() error {
 				continue
 			}
 
-			// 插入邮件记录
-			log.Printf("准备插入数据库 - Body: %s", body)
-			_, err = session.server.db.Exec(`
-				INSERT INTO emails (mailbox_id, from_addr, to_addr, subject, body, folder, created_at, updated_at)
-				VALUES (?, ?, ?, ?, ?, 'inbox', ?, ?)
-			`, mailboxID, session.from, to, subject, body, time.Now(), time.Now())
+			// 根据是否有附件选择保存方法
+			if len(session.attachments) > 0 {
+				log.Printf("准备保存邮件和 %d 个附件到数据库", len(session.attachments))
+				err = session.server.SaveEmailWithAttachments(mailboxID, session.from, to, subject, body, session.attachments)
+			} else {
+				log.Printf("准备保存邮件到数据库 - Body: %s", body)
+				err = session.server.SaveEmail(mailboxID, session.from, to, subject, body)
+			}
 
 			if err != nil {
-				log.Printf("插入邮件记录失败: %v", err)
+				log.Printf("邮件保存失败: %v", err)
 				return err
 			}
 
-			log.Printf("✅ 邮件保存成功 - 邮箱ID: %d, 主题: %s", mailboxID, subject)
+			log.Printf("✅ 邮件保存成功 - 邮箱ID: %d, 主题: %s, 附件数: %d", mailboxID, subject, len(session.attachments))
 
 			// 检查并执行转发规则
 			session.server.processForwardRules(to, session.from, subject, body)
@@ -3174,9 +3336,19 @@ func (s *Service) GetEmails(mailboxID int, folder string, page, limit int) ([]mo
 		if err != nil {
 			return nil, 0, err
 		}
+
+		// 获取附件信息
+		attachments, err := s.GetEmailAttachments(email.ID)
+		if err != nil {
+			log.Printf("获取邮件 %d 的附件失败: %v", email.ID, err)
+			// 不返回错误，只是没有附件信息
+		} else {
+			email.Attachments = attachments
+		}
+
 		emails = append(emails, email)
 	}
-	
+
 	return emails, total, nil
 }
 
@@ -3239,6 +3411,16 @@ func (s *Service) GetAllUserEmails(userID int, isAdmin bool, folder string, page
 		if err != nil {
 			return nil, 0, err
 		}
+
+		// 获取附件信息
+		attachments, err := s.GetEmailAttachments(email.ID)
+		if err != nil {
+			log.Printf("获取邮件 %d 的附件失败: %v", email.ID, err)
+			// 不返回错误，只是没有附件信息
+		} else {
+			email.Attachments = attachments
+		}
+
 		emails = append(emails, email)
 	}
 
@@ -3250,22 +3432,33 @@ func (s *Service) GetEmailByID(emailID, mailboxID int) (*models.Email, error) {
 	var email models.Email
 	query := `
 		SELECT id, mailbox_id, from_addr, to_addr, subject, body, is_read, folder, created_at, updated_at
-		FROM emails 
+		FROM emails
 		WHERE id = ? AND mailbox_id = ?
 	`
-	
+
 	err := s.db.QueryRow(query, emailID, mailboxID).Scan(
 		&email.ID, &email.MailboxID, &email.FromAddr, &email.ToAddr,
 		&email.Subject, &email.Body, &email.IsRead, &email.Folder,
 		&email.CreatedAt, &email.UpdatedAt)
-	
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("邮件不存在")
 		}
 		return nil, err
 	}
-	
+
+	// 获取附件信息
+	attachments, err := s.GetEmailAttachments(email.ID)
+	if err != nil {
+		log.Printf("获取邮件 %d 的附件失败: %v", email.ID, err)
+		// 不返回错误，只是没有附件信息
+	} else {
+		email.Attachments = attachments
+		// 处理邮件内容中的cid:引用
+		email.Body = s.replaceCIDReferences(email.Body, attachments)
+	}
+
 	return &email, nil
 }
 
@@ -3325,6 +3518,44 @@ func (session *SMTPSession) parseEmailWithEnmime(rawEmail string) (subject, body
 	} else {
 		log.Printf("未找到可用的邮件内容")
 		return subject, ""
+	}
+
+	// 处理附件
+	if len(env.Attachments) > 0 {
+		log.Printf("发现 %d 个附件", len(env.Attachments))
+		session.attachments = make([]models.EmailAttachment, 0, len(env.Attachments))
+
+		for _, attachment := range env.Attachments {
+			log.Printf("处理附件: %s, 大小: %d, 类型: %s",
+				attachment.FileName, len(attachment.Content), attachment.ContentType)
+
+			session.attachments = append(session.attachments, models.EmailAttachment{
+				Filename:    attachment.FileName,
+				ContentType: attachment.ContentType,
+				FileSize:    int64(len(attachment.Content)),
+				Content:     attachment.Content,
+			})
+		}
+	}
+
+	// 处理内嵌附件（如图片）
+	if len(env.Inlines) > 0 {
+		log.Printf("发现 %d 个内嵌附件", len(env.Inlines))
+		if session.attachments == nil {
+			session.attachments = make([]models.EmailAttachment, 0, len(env.Inlines))
+		}
+
+		for _, inline := range env.Inlines {
+			log.Printf("处理内嵌附件: %s, 大小: %d, 类型: %s",
+				inline.FileName, len(inline.Content), inline.ContentType)
+
+			session.attachments = append(session.attachments, models.EmailAttachment{
+				Filename:    inline.FileName,
+				ContentType: inline.ContentType,
+				FileSize:    int64(len(inline.Content)),
+				Content:     inline.Content,
+			})
+		}
 	}
 
 	return subject, body
@@ -3489,6 +3720,17 @@ func (s *Service) GetEmailByIDForUser(emailID, userID int) (*models.Email, error
 			return nil, fmt.Errorf("邮件不存在或无权访问")
 		}
 		return nil, err
+	}
+
+	// 获取附件信息
+	attachments, err := s.GetEmailAttachments(email.ID)
+	if err != nil {
+		log.Printf("获取邮件 %d 的附件失败: %v", email.ID, err)
+		// 不返回错误，只是没有附件信息
+	} else {
+		email.Attachments = attachments
+		// 处理邮件内容中的cid:引用
+		email.Body = s.replaceCIDReferences(email.Body, attachments)
 	}
 
 	return &email, nil

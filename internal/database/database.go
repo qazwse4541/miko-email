@@ -123,6 +123,18 @@ func createTables(db *sql.DB) error {
 			FOREIGN KEY (mailbox_id) REFERENCES mailboxes(id)
 		)`,
 
+		// 邮件附件表
+		`CREATE TABLE IF NOT EXISTS email_attachments (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			email_id INTEGER NOT NULL,
+			filename TEXT NOT NULL,
+			content_type TEXT NOT NULL,
+			file_size INTEGER NOT NULL,
+			content BLOB NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE
+		)`,
+
 		// 邮件转发表
 		`CREATE TABLE IF NOT EXISTS email_forwards (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -147,6 +159,7 @@ func createTables(db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_users_invite_code ON users(invite_code)`,
 		`CREATE INDEX IF NOT EXISTS idx_admins_username ON admins(username)`,
 		`CREATE INDEX IF NOT EXISTS idx_admins_email ON admins(email)`,
+		`CREATE INDEX IF NOT EXISTS idx_email_attachments_email_id ON email_attachments(email_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_mailboxes_email ON mailboxes(email)`,
 		`CREATE INDEX IF NOT EXISTS idx_mailboxes_user_id ON mailboxes(user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_mailboxes_admin_id ON mailboxes(admin_id)`,

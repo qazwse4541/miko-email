@@ -67,16 +67,28 @@ type Domain struct {
 
 // Email 邮件模型
 type Email struct {
-	ID         int       `json:"id" db:"id"`
-	MailboxID  int       `json:"mailbox_id" db:"mailbox_id"` // 邮箱ID
-	FromAddr   string    `json:"from_addr" db:"from_addr"`   // 发件人
-	ToAddr     string    `json:"to_addr" db:"to_addr"`       // 收件人
-	Subject    string    `json:"subject" db:"subject"`       // 主题
-	Body       string    `json:"body" db:"body"`             // 邮件内容
-	IsRead     bool      `json:"is_read" db:"is_read"`       // 是否已读
-	Folder     string    `json:"folder" db:"folder"`         // 文件夹 (inbox, sent, trash)
-	CreatedAt  time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at" db:"updated_at"`
+	ID          int                `json:"id" db:"id"`
+	MailboxID   int                `json:"mailbox_id" db:"mailbox_id"` // 邮箱ID
+	FromAddr    string             `json:"from_addr" db:"from_addr"`   // 发件人
+	ToAddr      string             `json:"to_addr" db:"to_addr"`       // 收件人
+	Subject     string             `json:"subject" db:"subject"`       // 主题
+	Body        string             `json:"body" db:"body"`             // 邮件内容
+	IsRead      bool               `json:"is_read" db:"is_read"`       // 是否已读
+	Folder      string             `json:"folder" db:"folder"`         // 文件夹 (inbox, sent, trash)
+	Attachments []EmailAttachment  `json:"attachments,omitempty"`      // 附件列表
+	CreatedAt   time.Time          `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at" db:"updated_at"`
+}
+
+// EmailAttachment 邮件附件模型
+type EmailAttachment struct {
+	ID          int       `json:"id" db:"id"`
+	EmailID     int       `json:"email_id" db:"email_id"`
+	Filename    string    `json:"filename" db:"filename"`
+	ContentType string    `json:"content_type" db:"content_type"`
+	FileSize    int64     `json:"file_size" db:"file_size"`
+	Content     []byte    `json:"-" db:"content"`                    // 不在JSON中返回内容
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 }
 
 // EmailForward 邮件转发模型
