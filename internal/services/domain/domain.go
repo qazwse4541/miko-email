@@ -3,6 +3,7 @@ package domain
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net"
 	"strings"
 	"time"
@@ -751,21 +752,128 @@ func (s *Service) UpdateDomainWithAllRecords(domainID int, mxRecord, aRecord, tx
 	return err
 }
 
-// DeleteDomain 删除域名
+// DeleteDomain 删除域名（级联删除所有相关数据）
 func (s *Service) DeleteDomain(domainID int) error {
-	// 检查是否有邮箱使用此域名
-	var count int
-	err := s.db.QueryRow("SELECT COUNT(*) FROM mailboxes WHERE domain_id = ? AND is_active = 1", domainID).Scan(&count)
+	return s.deleteDomainWithForce(domainID, true)
+}
+
+// CheckDomainUsage 检查域名使用情况
+func (s *Service) CheckDomainUsage(domainID int) (map[string]int, error) {
+	usage := make(map[string]int)
+
+	// 检查邮箱数量
+	var mailboxCount int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM mailboxes WHERE domain_id = ?", domainID).Scan(&mailboxCount)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("查询邮箱数量失败: %w", err)
 	}
-	if count > 0 {
-		return fmt.Errorf("该域名下还有邮箱，无法删除")
+	usage["mailboxes"] = mailboxCount
+
+	// 检查邮件数量
+	var emailCount int
+	err = s.db.QueryRow(`SELECT COUNT(*) FROM emails
+		WHERE mailbox_id IN (SELECT id FROM mailboxes WHERE domain_id = ?)`, domainID).Scan(&emailCount)
+	if err != nil {
+		return nil, fmt.Errorf("查询邮件数量失败: %w", err)
+	}
+	usage["emails"] = emailCount
+
+	// 检查附件数量
+	var attachmentCount int
+	err = s.db.QueryRow(`SELECT COUNT(*) FROM email_attachments
+		WHERE email_id IN (
+			SELECT e.id FROM emails e
+			JOIN mailboxes m ON e.mailbox_id = m.id
+			WHERE m.domain_id = ?
+		)`, domainID).Scan(&attachmentCount)
+	if err != nil {
+		return nil, fmt.Errorf("查询附件数量失败: %w", err)
+	}
+	usage["attachments"] = attachmentCount
+
+	return usage, nil
+}
+
+// deleteDomainWithForce 删除域名的内部实现
+func (s *Service) deleteDomainWithForce(domainID int, force bool) error {
+	// 检查域名是否存在
+	var domainName string
+	err := s.db.QueryRow("SELECT name FROM domains WHERE id = ?", domainID).Scan(&domainName)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("域名不存在")
+		}
+		return fmt.Errorf("查询域名失败: %w", err)
 	}
 
-	// 真正删除域名记录
-	_, err = s.db.Exec("DELETE FROM domains WHERE id = ?", domainID)
-	return err
+	// 如果不是强制删除，先检查使用情况
+	if !force {
+		usage, err := s.CheckDomainUsage(domainID)
+		if err != nil {
+			return fmt.Errorf("检查域名使用情况失败: %w", err)
+		}
+
+		if usage["mailboxes"] > 0 {
+			return fmt.Errorf("该域名下还有 %d 个邮箱，无法删除。如需强制删除，请联系系统管理员", usage["mailboxes"])
+		}
+	}
+
+	// 开始事务
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("开始事务失败: %w", err)
+	}
+	defer tx.Rollback()
+
+	// 1. 删除该域名下所有邮箱的附件
+	_, err = tx.Exec(`DELETE FROM email_attachments
+		WHERE email_id IN (
+			SELECT e.id FROM emails e
+			JOIN mailboxes m ON e.mailbox_id = m.id
+			WHERE m.domain_id = ?
+		)`, domainID)
+	if err != nil {
+		log.Printf("删除域名 %s (ID: %d) 的邮件附件失败: %v", domainName, domainID, err)
+		return fmt.Errorf("删除邮件附件失败: %w", err)
+	}
+
+	// 2. 删除该域名下所有邮箱的转发规则
+	_, err = tx.Exec(`DELETE FROM email_forwards
+		WHERE mailbox_id IN (SELECT id FROM mailboxes WHERE domain_id = ?)`, domainID)
+	if err != nil {
+		log.Printf("删除域名 %s (ID: %d) 的转发规则失败: %v", domainName, domainID, err)
+		return fmt.Errorf("删除转发规则失败: %w", err)
+	}
+
+	// 3. 删除该域名下所有邮箱的邮件
+	_, err = tx.Exec(`DELETE FROM emails
+		WHERE mailbox_id IN (SELECT id FROM mailboxes WHERE domain_id = ?)`, domainID)
+	if err != nil {
+		log.Printf("删除域名 %s (ID: %d) 的邮件失败: %v", domainName, domainID, err)
+		return fmt.Errorf("删除邮件失败: %w", err)
+	}
+
+	// 4. 删除该域名下的所有邮箱（包括活跃和非活跃的）
+	_, err = tx.Exec("DELETE FROM mailboxes WHERE domain_id = ?", domainID)
+	if err != nil {
+		log.Printf("删除域名 %s (ID: %d) 的邮箱失败: %v", domainName, domainID, err)
+		return fmt.Errorf("删除邮箱失败: %w", err)
+	}
+
+	// 5. 删除域名记录
+	_, err = tx.Exec("DELETE FROM domains WHERE id = ?", domainID)
+	if err != nil {
+		log.Printf("删除域名 %s (ID: %d) 失败: %v", domainName, domainID, err)
+		return fmt.Errorf("删除域名记录失败: %w", err)
+	}
+
+	// 提交事务
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("提交事务失败: %w", err)
+	}
+
+	log.Printf("✅ 域名 %s (ID: %d) 及其所有相关数据删除成功", domainName, domainID)
+	return nil
 }
 
 // GetAvailableDomains 获取可用的域名列表（激活的域名，用于用户注册）

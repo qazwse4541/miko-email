@@ -2715,7 +2715,7 @@ func (s *Service) GetAttachmentWithPermissionCheck(attachmentID, userID int, isA
 		`
 		args = []interface{}{attachmentID}
 	} else {
-		// 普通用户只能访问自己邮箱的附件
+		// 普通用户只能访问自己邮箱的附件（包括收件箱、已发送、草稿等所有文件夹）
 		query = `
 			SELECT a.id, a.email_id, a.filename, a.content_type, a.file_size, a.created_at
 			FROM email_attachments a
@@ -2724,6 +2724,7 @@ func (s *Service) GetAttachmentWithPermissionCheck(attachmentID, userID int, isA
 			WHERE a.id = ? AND m.user_id = ?
 		`
 		args = []interface{}{attachmentID, userID}
+		log.Printf("检查附件权限: 附件ID=%d, 用户ID=%d", attachmentID, userID)
 	}
 
 	err := s.db.QueryRow(query, args...).Scan(
@@ -2908,6 +2909,17 @@ func (s *Service) GetDraftByID(draftID int, mailboxID int) (*models.Email, error
 
 	if err != nil {
 		return nil, err
+	}
+
+	// 获取附件信息
+	attachments, err := s.GetEmailAttachments(email.ID)
+	if err != nil {
+		log.Printf("获取草稿 %d 的附件失败: %v", email.ID, err)
+		// 不返回错误，只是没有附件信息
+	} else {
+		email.Attachments = attachments
+		// 处理邮件内容中的cid:引用
+		email.Body = s.replaceCIDReferences(email.Body, attachments)
 	}
 
 	return &email, nil

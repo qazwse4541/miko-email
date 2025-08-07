@@ -3,6 +3,7 @@ package user
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"time"
 
 	"miko-email/internal/models"
@@ -172,33 +173,50 @@ func (s *Service) DeleteUser(userID int) error {
 	}
 	defer tx.Rollback()
 
-	// 1. 删除用户的邮件转发规则
+	// 1. 删除用户的邮件附件（必须先删除，因为依赖邮件）
+	_, err = tx.Exec(`DELETE FROM email_attachments
+		WHERE email_id IN (
+			SELECT e.id FROM emails e
+			JOIN mailboxes m ON e.mailbox_id = m.id
+			WHERE m.user_id = ?
+		)`, userID)
+	if err != nil {
+		log.Printf("删除用户 %d 的邮件附件失败: %v", userID, err)
+		return fmt.Errorf("删除邮件附件失败: %w", err)
+	}
+
+	// 2. 删除用户的邮件转发规则
 	_, err = tx.Exec(`DELETE FROM email_forwards
 		WHERE mailbox_id IN (SELECT id FROM mailboxes WHERE user_id = ?)`, userID)
 	if err != nil {
-		return err
+		log.Printf("删除用户 %d 的转发规则失败: %v", userID, err)
+		return fmt.Errorf("删除转发规则失败: %w", err)
 	}
 
-	// 2. 删除用户的邮件
+	// 3. 删除用户的邮件
 	_, err = tx.Exec(`DELETE FROM emails
 		WHERE mailbox_id IN (SELECT id FROM mailboxes WHERE user_id = ?)`, userID)
 	if err != nil {
-		return err
+		log.Printf("删除用户 %d 的邮件失败: %v", userID, err)
+		return fmt.Errorf("删除邮件失败: %w", err)
 	}
 
-	// 3. 删除用户的邮箱
+	// 4. 删除用户的邮箱
 	_, err = tx.Exec("DELETE FROM mailboxes WHERE user_id = ?", userID)
 	if err != nil {
-		return err
+		log.Printf("删除用户 %d 的邮箱失败: %v", userID, err)
+		return fmt.Errorf("删除邮箱失败: %w", err)
 	}
 
-	// 4. 删除用户记录
+	// 5. 删除用户记录
 	_, err = tx.Exec("DELETE FROM users WHERE id = ?", userID)
 	if err != nil {
-		return err
+		log.Printf("删除用户 %d 失败: %v", userID, err)
+		return fmt.Errorf("删除用户记录失败: %w", err)
 	}
 
 	// 提交事务
+	log.Printf("✅ 用户 %d 及其所有相关数据删除成功", userID)
 	return tx.Commit()
 }
 

@@ -3,6 +3,7 @@ package mailbox
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"time"
 
 	"miko-email/internal/models"
@@ -466,24 +467,36 @@ func (s *Service) DeleteMailbox(mailboxID, userID int, isAdmin bool) error {
 	}
 	defer tx.Rollback()
 
-	// 删除相关邮件
-	_, err = tx.Exec("DELETE FROM emails WHERE mailbox_id = ?", mailboxID)
+	// 1. 删除邮件附件（必须先删除，因为依赖邮件）
+	_, err = tx.Exec(`DELETE FROM email_attachments
+		WHERE email_id IN (SELECT id FROM emails WHERE mailbox_id = ?)`, mailboxID)
 	if err != nil {
-		return err
+		log.Printf("删除邮箱 %d 的附件失败: %v", mailboxID, err)
+		return fmt.Errorf("删除邮件附件失败: %w", err)
 	}
 
-	// 删除转发规则
+	// 2. 删除转发规则
 	_, err = tx.Exec("DELETE FROM email_forwards WHERE mailbox_id = ?", mailboxID)
 	if err != nil {
-		return err
+		log.Printf("删除邮箱 %d 的转发规则失败: %v", mailboxID, err)
+		return fmt.Errorf("删除转发规则失败: %w", err)
 	}
 
-	// 删除邮箱
+	// 3. 删除相关邮件
+	_, err = tx.Exec("DELETE FROM emails WHERE mailbox_id = ?", mailboxID)
+	if err != nil {
+		log.Printf("删除邮箱 %d 的邮件失败: %v", mailboxID, err)
+		return fmt.Errorf("删除邮件失败: %w", err)
+	}
+
+	// 4. 删除邮箱
 	_, err = tx.Exec("DELETE FROM mailboxes WHERE id = ?", mailboxID)
 	if err != nil {
-		return err
+		log.Printf("删除邮箱 %d 失败: %v", mailboxID, err)
+		return fmt.Errorf("删除邮箱失败: %w", err)
 	}
 
+	log.Printf("✅ 邮箱 %d 及其所有相关数据删除成功", mailboxID)
 	return tx.Commit()
 }
 
@@ -575,18 +588,36 @@ func (s *Service) DeleteMailboxAdmin(mailboxID int) error {
 	}
 	defer tx.Rollback()
 
-	// 删除相关邮件
+	// 1. 删除邮件附件（必须先删除，因为依赖邮件）
+	_, err = tx.Exec(`DELETE FROM email_attachments
+		WHERE email_id IN (SELECT id FROM emails WHERE mailbox_id = ?)`, mailboxID)
+	if err != nil {
+		log.Printf("管理员删除邮箱 %d 的附件失败: %v", mailboxID, err)
+		return fmt.Errorf("删除邮件附件失败: %w", err)
+	}
+
+	// 2. 删除转发规则
+	_, err = tx.Exec("DELETE FROM email_forwards WHERE mailbox_id = ?", mailboxID)
+	if err != nil {
+		log.Printf("管理员删除邮箱 %d 的转发规则失败: %v", mailboxID, err)
+		return fmt.Errorf("删除转发规则失败: %w", err)
+	}
+
+	// 3. 删除相关邮件
 	_, err = tx.Exec("DELETE FROM emails WHERE mailbox_id = ?", mailboxID)
 	if err != nil {
-		return err
+		log.Printf("管理员删除邮箱 %d 的邮件失败: %v", mailboxID, err)
+		return fmt.Errorf("删除邮件失败: %w", err)
 	}
 
-	// 删除邮箱
+	// 4. 删除邮箱
 	_, err = tx.Exec("DELETE FROM mailboxes WHERE id = ?", mailboxID)
 	if err != nil {
-		return err
+		log.Printf("管理员删除邮箱 %d 失败: %v", mailboxID, err)
+		return fmt.Errorf("删除邮箱失败: %w", err)
 	}
 
+	log.Printf("✅ 管理员删除邮箱 %d 及其所有相关数据成功", mailboxID)
 	return tx.Commit()
 }
 

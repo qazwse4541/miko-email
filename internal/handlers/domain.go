@@ -241,6 +241,27 @@ func (h *DomainHandler) DeleteDomain(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "域名删除成功"})
 }
 
+// GetDomainUsage 获取域名使用情况
+func (h *DomainHandler) GetDomainUsage(c *gin.Context) {
+	domainIDStr := c.Param("id")
+	domainID, err := strconv.Atoi(domainIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "域名ID格式错误"})
+		return
+	}
+
+	usage, err := h.domainService.CheckDomainUsage(domainID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    usage,
+	})
+}
+
 // VerifyDomain 验证域名
 func (h *DomainHandler) VerifyDomain(c *gin.Context) {
 	domainIDStr := c.Param("id")

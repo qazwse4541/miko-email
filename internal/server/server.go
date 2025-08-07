@@ -233,6 +233,7 @@ func (s *Server) setupRoutes() {
 			apiAdmin.POST("/domains/simple", domainHandler.CreateDomainSimple) // 简化创建域名
 			apiAdmin.PUT("/domains/:id", domainHandler.UpdateDomain)
 			apiAdmin.DELETE("/domains/:id", domainHandler.DeleteDomain)
+			apiAdmin.GET("/domains/:id/usage", domainHandler.GetDomainUsage) // 获取域名使用情况
 			apiAdmin.POST("/domains/:id/verify", domainHandler.VerifyDomain)
 			apiAdmin.POST("/domains/:id/verify-sender", domainHandler.VerifySenderConfiguration)
 			apiAdmin.POST("/domains/:id/verify-receiver", domainHandler.VerifyReceiverConfiguration)
