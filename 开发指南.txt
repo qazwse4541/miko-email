@@ -68,5 +68,1630 @@ go mod tidy
 2. 项目结构说明
 ===============================================================================
 
-2.1 目录结构
-后面完善
+2.1 目录结构详解
+
+思.凡邮箱系统采用标准的Go项目结构，遵循Clean Architecture设计原则：
+
+```
+思.凡邮箱系统/
+├── internal/                       # 内部包，不对外暴露
+│   ├── config/                     # 配置管理
+│   │   ├── config.go              # 配置结构定义
+│   │   └── loader.go              # 配置加载器
+│   ├── database/                   # 数据库层
+│   │   ├── init.go                # 数据库初始化
+│   │   ├── migrations.go          # 数据库迁移
+│   │   └── connection.go          # 连接管理
+│   ├── handlers/                   # 控制器层 (HTTP处理)
+│   │   ├── auth.go                # 认证控制器
+│   │   ├── domain.go              # 域名控制器
+│   │   ├── email.go               # 邮件控制器
+│   │   ├── forward.go             # 转发控制器
+│   │   ├── mailbox.go             # 邮箱控制器
+│   │   └── user.go                # 用户控制器
+│   ├── middleware/                 # 中间件层
+│   │   ├── auth.go                # 认证中间件
+│   │   ├── cors.go                # 跨域中间件
+│   │   ├── logging.go             # 日志中间件
+│   │   └── rate_limit.go          # 限流中间件
+│   ├── models/                     # 数据模型层
+│   │   ├── user.go                # 用户模型
+│   │   ├── domain.go              # 域名模型
+│   │   ├── mailbox.go             # 邮箱模型
+│   │   ├── email.go               # 邮件模型
+│   │   └── forward.go             # 转发模型
+│   ├── server/                     # 服务器层
+│   │   ├── http.go                # HTTP服务器
+│   │   ├── smtp.go                # SMTP服务器
+│   │   ├── imap.go                # IMAP服务器
+│   │   └── pop3.go                # POP3服务器
+│   ├── services/                   # 业务逻辑层
+│   │   ├── auth/                  # 认证服务
+│   │   │   ├── service.go         # 认证业务逻辑
+│   │   │   └── jwt.go             # JWT处理
+│   │   ├── domain/                # 域名服务
+│   │   │   ├── service.go         # 域名业务逻辑
+│   │   │   ├── dns.go             # DNS验证
+│   │   │   └── dkim.go            # DKIM处理
+│   │   ├── email/                 # 邮件服务
+│   │   │   ├── service.go         # 邮件业务逻辑
+│   │   │   ├── sender.go          # 邮件发送
+│   │   │   └── parser.go          # 邮件解析
+│   │   ├── forward/               # 转发服务
+│   │   │   ├── service.go         # 转发业务逻辑
+│   │   │   └── engine.go          # 转发引擎
+│   │   └── mailbox/               # 邮箱服务
+│   │       ├── service.go         # 邮箱业务逻辑
+│   │       └── stats.go           # 统计功能
+│   └── utils/                      # 工具包
+│       ├── crypto.go              # 加密工具
+│       ├── validator.go           # 验证工具
+│       └── helper.go              # 辅助函数
+├── web/                            # Web前端
+│   ├── static/                    # 静态资源
+│   │   ├── css/                   # 样式文件
+│   │   │   ├── admin.css          # 管理员样式
+│   │   │   ├── user.css           # 用户样式
+│   │   │   └── common.css         # 公共样式
+│   │   ├── js/                    # JavaScript文件
+│   │   │   ├── admin.js           # 管理员脚本
+│   │   │   ├── user.js            # 用户脚本
+│   │   │   └── common.js          # 公共脚本
+│   │   └── images/                # 图片资源
+│   └── templates/                 # HTML模板
+│       ├── admin/                 # 管理员模板
+│       ├── user/                  # 用户模板
+│       └── common/                # 公共模板
+├── dkim_keys/                     # DKIM密钥存储
+├── logs/                          # 日志文件
+├── test/                          # 测试文件
+│   ├── unit/                      # 单元测试
+│   ├── integration/               # 集成测试
+│   └── fixtures/                  # 测试数据
+├── scripts/                       # 脚本文件
+│   ├── build.sh                   # 构建脚本
+│   ├── deploy.sh                  # 部署脚本
+│   └── backup.sh                  # 备份脚本
+├── docs/                          # 文档目录
+│   ├── api/                       # API文档
+│   ├── design/                    # 设计文档
+│   └── deployment/                # 部署文档
+├── main.go                        # 程序入口
+├── config.yaml                    # 配置文件
+├── go.mod                         # Go模块文件
+├── go.sum                         # 依赖校验文件
+├── Dockerfile                     # Docker构建文件
+├── docker-compose.yml             # Docker编排文件
+└── Makefile                       # 构建配置
+```
+
+2.2 架构设计原则
+
+本项目遵循以下设计原则：
+
+1. **分层架构**: 严格按照Handler -> Service -> Repository的分层结构
+2. **依赖注入**: 使用接口和依赖注入降低耦合
+3. **单一职责**: 每个包和文件都有明确的职责
+4. **开闭原则**: 对扩展开放，对修改关闭
+5. **接口隔离**: 定义小而专一的接口
+
+2.3 核心组件说明
+
+**Handler层 (控制器)**
+- 负责HTTP请求处理
+- 参数验证和响应格式化
+- 调用Service层处理业务逻辑
+- 不包含业务逻辑
+
+**Service层 (业务逻辑)**
+- 核心业务逻辑处理
+- 事务管理
+- 数据验证和转换
+- 调用Repository层进行数据操作
+
+**Repository层 (数据访问)**
+- 数据库操作封装
+- SQL查询和数据映射
+- 缓存处理
+- 数据一致性保证
+
+**Model层 (数据模型)**
+- 数据结构定义
+- 数据验证规则
+- 序列化/反序列化
+- 业务规则约束
+
+===============================================================================
+3. 开发规范
+===============================================================================
+
+3.1 代码规范
+
+**命名规范**
+- 包名: 小写字母，简短有意义 (如: auth, email, domain)
+- 文件名: 小写字母+下划线 (如: user_service.go)
+- 函数名: 驼峰命名法 (如: CreateUser, GetUserByID)
+- 变量名: 驼峰命名法 (如: userID, emailAddress)
+- 常量名: 大写字母+下划线 (如: MAX_EMAIL_SIZE)
+
+**注释规范**
+- 所有公开函数必须有注释
+- 复杂逻辑必须有行内注释
+- 包级别注释说明包的用途
+- 使用中文注释，简洁明了
+
+示例:
+```go
+// UserService 用户服务接口
+type UserService interface {
+    // CreateUser 创建新用户
+    // 参数: username 用户名, password 密码, email 邮箱
+    // 返回: 用户信息, 错误信息
+    CreateUser(username, password, email string) (*models.User, error)
+}
+```
+
+**错误处理规范**
+- 使用标准的error接口
+- 自定义错误类型包含错误码
+- 错误信息使用中文
+- 记录详细的错误日志
+
+示例:
+```go
+// 自定义错误类型
+type AppError struct {
+    Code    int    `json:"code"`
+    Message string `json:"message"`
+    Detail  string `json:"detail,omitempty"`
+}
+
+func (e *AppError) Error() string {
+    return e.Message
+}
+
+// 错误处理
+if err != nil {
+    log.Printf("创建用户失败: %v", err)
+    return nil, &AppError{
+        Code:    400,
+        Message: "用户创建失败",
+        Detail:  err.Error(),
+    }
+}
+```
+
+3.2 数据库规范
+
+**表命名规范**
+- 使用复数形式 (如: users, domains, mailboxes)
+- 小写字母+下划线分隔
+- 关联表使用两个表名组合 (如: user_domains)
+
+**字段命名规范**
+- 小写字母+下划线分隔
+- 主键统一使用 id
+- 外键使用 表名_id 格式
+- 时间字段使用 created_at, updated_at
+
+**索引规范**
+- 主键自动创建索引
+- 外键字段创建索引
+- 查询频繁的字段创建索引
+- 复合索引按查询频率排序
+
+3.3 API设计规范
+
+**RESTful API规范**
+- GET: 获取资源
+- POST: 创建资源
+- PUT: 更新资源(全量)
+- PATCH: 更新资源(部分)
+- DELETE: 删除资源
+
+**URL设计规范**
+- 使用名词，不使用动词
+- 使用复数形式
+- 层级关系清晰
+- 版本控制 (如: /api/v1/users)
+
+**响应格式规范**
+```json
+{
+  "success": true,
+  "message": "操作成功",
+  "data": {},
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 100
+  }
+}
+```
+
+3.4 安全规范
+
+**认证授权**
+- 使用JWT Token进行认证
+- Session Cookie作为备选方案
+- 敏感操作需要二次验证
+- 定期刷新Token
+
+**数据验证**
+- 所有输入数据必须验证
+- 使用白名单验证
+- SQL注入防护
+- XSS攻击防护
+
+**密码安全**
+- 使用bcrypt加密存储
+- 密码强度验证
+- 密码重试次数限制
+- 密码定期更换提醒
+
+===============================================================================
+4. 代码风格
+===============================================================================
+
+4.1 Go代码风格
+
+遵循官方Go代码规范:
+- 使用gofmt格式化代码
+- 使用golint检查代码质量
+- 使用go vet检查潜在问题
+- 使用go mod管理依赖
+
+**包导入规范**
+```go
+import (
+    // 标准库
+    "fmt"
+    "net/http"
+    "time"
+
+    // 第三方库
+    "github.com/gin-gonic/gin"
+    "github.com/golang-jwt/jwt/v4"
+
+    // 项目内部包
+    "miko-email/internal/models"
+    "miko-email/internal/services"
+)
+```
+
+**函数设计规范**
+- 函数长度不超过50行
+- 参数个数不超过5个
+- 返回值明确，错误处理完善
+- 单一职责原则
+
+4.2 前端代码风格
+
+**HTML规范**
+- 使用语义化标签
+- 属性值使用双引号
+- 标签和属性名小写
+- 合理的缩进和换行
+
+**CSS规范**
+- 使用BEM命名规范
+- 避免使用!important
+- 合理使用CSS变量
+- 响应式设计优先
+
+**JavaScript规范**
+- 使用ES6+语法
+- 使用const/let，避免var
+- 函数式编程优先
+- 异步操作使用async/await
+
+===============================================================================
+5. 数据库设计
+===============================================================================
+
+5.1 数据库表结构
+
+**用户表 (users)**
+```sql
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    contribution INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**管理员表 (admins)**
+```sql
+CREATE TABLE admins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    email TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**域名表 (domains)**
+```sql
+CREATE TABLE domains (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    is_verified BOOLEAN DEFAULT 0,
+    is_active BOOLEAN DEFAULT 1,
+    mx_record TEXT,
+    a_record TEXT,
+    txt_record TEXT,
+    spf_record TEXT,
+    dmarc_record TEXT,
+    dkim_record TEXT,
+    ptr_record TEXT,
+    sender_verification_status TEXT DEFAULT 'pending',
+    receiver_verification_status TEXT DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**邮箱表 (mailboxes)**
+```sql
+CREATE TABLE mailboxes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    domain_id INTEGER NOT NULL,
+    prefix TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT 1,
+    quota_used INTEGER DEFAULT 0,
+    quota_limit INTEGER DEFAULT 1000,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE,
+    UNIQUE(prefix, domain_id)
+);
+```
+
+**邮件表 (emails)**
+```sql
+CREATE TABLE emails (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    mailbox_id INTEGER NOT NULL,
+    message_id TEXT UNIQUE NOT NULL,
+    from_address TEXT NOT NULL,
+    to_address TEXT NOT NULL,
+    cc_address TEXT,
+    bcc_address TEXT,
+    subject TEXT,
+    content TEXT,
+    html_content TEXT,
+    is_read BOOLEAN DEFAULT 0,
+    is_deleted BOOLEAN DEFAULT 0,
+    email_type TEXT DEFAULT 'inbox',
+    size INTEGER DEFAULT 0,
+    received_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (mailbox_id) REFERENCES mailboxes(id) ON DELETE CASCADE
+);
+```
+
+**邮件附件表 (email_attachments)**
+```sql
+CREATE TABLE email_attachments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email_id INTEGER NOT NULL,
+    filename TEXT NOT NULL,
+    content_type TEXT,
+    size INTEGER NOT NULL,
+    file_path TEXT NOT NULL,
+    cid TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE
+);
+```
+
+**转发规则表 (email_forwards)**
+```sql
+CREATE TABLE email_forwards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    source_mailbox TEXT NOT NULL,
+    target_email TEXT NOT NULL,
+    conditions TEXT,
+    enabled BOOLEAN DEFAULT 1,
+    forward_count INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+```
+
+5.2 数据库索引设计
+
+**性能优化索引**
+```sql
+-- 用户表索引
+CREATE INDEX idx_users_username ON users(username);
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_active ON users(is_active);
+
+-- 域名表索引
+CREATE INDEX idx_domains_name ON domains(name);
+CREATE INDEX idx_domains_active ON domains(is_active);
+
+-- 邮箱表索引
+CREATE INDEX idx_mailboxes_user_id ON mailboxes(user_id);
+CREATE INDEX idx_mailboxes_domain_id ON mailboxes(domain_id);
+CREATE INDEX idx_mailboxes_prefix_domain ON mailboxes(prefix, domain_id);
+CREATE INDEX idx_mailboxes_active ON mailboxes(is_active);
+
+-- 邮件表索引
+CREATE INDEX idx_emails_mailbox_id ON emails(mailbox_id);
+CREATE INDEX idx_emails_message_id ON emails(message_id);
+CREATE INDEX idx_emails_from_address ON emails(from_address);
+CREATE INDEX idx_emails_to_address ON emails(to_address);
+CREATE INDEX idx_emails_type ON emails(email_type);
+CREATE INDEX idx_emails_read ON emails(is_read);
+CREATE INDEX idx_emails_received_at ON emails(received_at);
+
+-- 附件表索引
+CREATE INDEX idx_attachments_email_id ON email_attachments(email_id);
+
+-- 转发表索引
+CREATE INDEX idx_forwards_user_id ON email_forwards(user_id);
+CREATE INDEX idx_forwards_source ON email_forwards(source_mailbox);
+CREATE INDEX idx_forwards_enabled ON email_forwards(enabled);
+```
+
+5.3 数据库约束和触发器
+
+**级联删除约束**
+- 删除用户时自动删除其邮箱和转发规则
+- 删除域名时自动删除其下所有邮箱
+- 删除邮箱时自动删除其邮件和附件
+- 删除邮件时自动删除其附件
+
+**数据完整性约束**
+- 邮箱前缀+域名组合唯一
+- 邮件大小不能超过限制
+- 用户邮箱数量不能超过限制
+
+**自动更新触发器**
+```sql
+-- 更新时间触发器
+CREATE TRIGGER update_users_timestamp
+    AFTER UPDATE ON users
+    FOR EACH ROW
+    BEGIN
+        UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+    END;
+
+-- 邮箱配额更新触发器
+CREATE TRIGGER update_mailbox_quota
+    AFTER INSERT ON emails
+    FOR EACH ROW
+    BEGIN
+        UPDATE mailboxes
+        SET quota_used = quota_used + NEW.size
+        WHERE id = NEW.mailbox_id;
+    END;
+```
+
+===============================================================================
+6. API开发指南
+===============================================================================
+
+6.1 API设计原则
+
+**RESTful设计**
+- 资源导向的URL设计
+- HTTP方法语义化使用
+- 状态码规范使用
+- 无状态设计
+
+**版本控制**
+- URL版本控制: /api/v1/users
+- 向后兼容原则
+- 废弃API渐进式下线
+
+**错误处理**
+- 统一错误响应格式
+- 详细的错误信息
+- 错误码标准化
+- 国际化支持
+
+6.2 API开发流程
+
+**1. 需求分析**
+- 明确API功能需求
+- 确定输入输出参数
+- 设计数据流程
+- 评估性能要求
+
+**2. 接口设计**
+- 设计URL路径
+- 定义请求/响应格式
+- 确定认证方式
+- 编写API文档
+
+**3. 代码实现**
+- 创建Handler函数
+- 实现业务逻辑
+- 添加参数验证
+- 编写单元测试
+
+**4. 测试验证**
+- 单元测试
+- 集成测试
+- 性能测试
+- 安全测试
+
+6.3 API实现示例
+
+**用户创建API**
+```go
+// CreateUser 创建用户
+func (h *UserHandler) CreateUser(c *gin.Context) {
+    var req CreateUserRequest
+
+    // 1. 参数绑定和验证
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "请求参数错误",
+            "detail":  err.Error(),
+        })
+        return
+    }
+
+    // 2. 业务逻辑处理
+    user, err := h.userService.CreateUser(req.Username, req.Password, req.Email)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": err.Error(),
+        })
+        return
+    }
+
+    // 3. 成功响应
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "message": "用户创建成功",
+        "data":    user,
+    })
+}
+```
+
+**请求结构体定义**
+```go
+type CreateUserRequest struct {
+    Username string `json:"username" binding:"required,min=3,max=20"`
+    Password string `json:"password" binding:"required,min=6"`
+    Email    string `json:"email" binding:"required,email"`
+}
+```
+
+**响应结构体定义**
+```go
+type APIResponse struct {
+    Success bool        `json:"success"`
+    Message string      `json:"message"`
+    Data    interface{} `json:"data,omitempty"`
+    Error   *APIError   `json:"error,omitempty"`
+}
+
+type APIError struct {
+    Code   int    `json:"code"`
+    Detail string `json:"detail,omitempty"`
+}
+```
+
+6.4 中间件开发
+
+**认证中间件**
+```go
+func AuthMiddleware() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        // 1. 获取Token
+        token := c.GetHeader("Authorization")
+        if token == "" {
+            c.JSON(http.StatusUnauthorized, gin.H{
+                "success": false,
+                "message": "未提供认证信息",
+            })
+            c.Abort()
+            return
+        }
+
+        // 2. 验证Token
+        userID, err := validateToken(token)
+        if err != nil {
+            c.JSON(http.StatusUnauthorized, gin.H{
+                "success": false,
+                "message": "认证失败",
+            })
+            c.Abort()
+            return
+        }
+
+        // 3. 设置用户信息
+        c.Set("user_id", userID)
+        c.Next()
+    }
+}
+```
+
+**日志中间件**
+```go
+func LoggingMiddleware() gin.HandlerFunc {
+    return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+        return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
+            param.ClientIP,
+            param.TimeStamp.Format(time.RFC1123),
+            param.Method,
+            param.Path,
+            param.Request.Proto,
+            param.StatusCode,
+            param.Latency,
+            param.Request.UserAgent(),
+            param.ErrorMessage,
+        )
+    })
+}
+```
+
+===============================================================================
+7. 前端开发指南
+===============================================================================
+
+7.1 前端架构
+
+**技术选型**
+- HTML5: 语义化标签，现代化特性
+- CSS3: Flexbox/Grid布局，动画效果
+- Bootstrap 5: 响应式框架，组件库
+- JavaScript ES6+: 现代化语法，模块化
+- Axios: HTTP请求库
+
+**目录结构**
+```
+web/
+├── static/
+│   ├── css/
+│   │   ├── admin.css          # 管理员样式
+│   │   ├── user.css           # 用户样式
+│   │   ├── common.css         # 公共样式
+│   │   └── themes/            # 主题样式
+│   ├── js/
+│   │   ├── admin.js           # 管理员脚本
+│   │   ├── user.js            # 用户脚本
+│   │   ├── common.js          # 公共脚本
+│   │   └── components/        # 组件脚本
+│   └── images/
+│       ├── icons/             # 图标
+│       ├── logos/             # Logo
+│       └── backgrounds/       # 背景图
+└── templates/
+    ├── admin/                 # 管理员模板
+    ├── user/                  # 用户模板
+    └── common/                # 公共模板
+```
+
+7.2 组件化开发
+
+**公共组件**
+```javascript
+// 消息提示组件
+class MessageToast {
+    static show(message, type = 'info', duration = 3000) {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 100);
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 300);
+        }, duration);
+    }
+}
+
+// 确认对话框组件
+class ConfirmDialog {
+    static show(message, onConfirm, onCancel) {
+        const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+        document.getElementById('confirmMessage').textContent = message;
+
+        document.getElementById('confirmBtn').onclick = () => {
+            modal.hide();
+            if (onConfirm) onConfirm();
+        };
+
+        document.getElementById('cancelBtn').onclick = () => {
+            modal.hide();
+            if (onCancel) onCancel();
+        };
+
+        modal.show();
+    }
+}
+```
+
+**数据表格组件**
+```javascript
+class DataTable {
+    constructor(containerId, options = {}) {
+        this.container = document.getElementById(containerId);
+        this.options = {
+            pageSize: 20,
+            sortable: true,
+            searchable: true,
+            ...options
+        };
+        this.data = [];
+        this.currentPage = 1;
+        this.totalPages = 1;
+
+        this.init();
+    }
+
+    init() {
+        this.createTable();
+        this.createPagination();
+        if (this.options.searchable) {
+            this.createSearch();
+        }
+    }
+
+    setData(data) {
+        this.data = data;
+        this.totalPages = Math.ceil(data.length / this.options.pageSize);
+        this.render();
+    }
+
+    render() {
+        const startIndex = (this.currentPage - 1) * this.options.pageSize;
+        const endIndex = startIndex + this.options.pageSize;
+        const pageData = this.data.slice(startIndex, endIndex);
+
+        this.renderTable(pageData);
+        this.renderPagination();
+    }
+}
+```
+
+7.3 API调用封装
+
+**HTTP客户端封装**
+```javascript
+class APIClient {
+    constructor(baseURL = '/api') {
+        this.baseURL = baseURL;
+        this.axios = axios.create({
+            baseURL: baseURL,
+            timeout: 10000,
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        this.setupInterceptors();
+    }
+
+    setupInterceptors() {
+        // 请求拦截器
+        this.axios.interceptors.request.use(
+            config => {
+                // 添加认证头
+                const token = localStorage.getItem('token');
+                if (token) {
+                    config.headers.Authorization = `Bearer ${token}`;
+                }
+                return config;
+            },
+            error => Promise.reject(error)
+        );
+
+        // 响应拦截器
+        this.axios.interceptors.response.use(
+            response => response.data,
+            error => {
+                if (error.response?.status === 401) {
+                    // 认证失败，跳转登录
+                    window.location.href = '/login';
+                }
+                return Promise.reject(error);
+            }
+        );
+    }
+
+    async get(url, params = {}) {
+        return this.axios.get(url, { params });
+    }
+
+    async post(url, data = {}) {
+        return this.axios.post(url, data);
+    }
+
+    async put(url, data = {}) {
+        return this.axios.put(url, data);
+    }
+
+    async delete(url) {
+        return this.axios.delete(url);
+    }
+}
+
+// 全局API客户端实例
+const api = new APIClient();
+```
+
+**业务API封装**
+```javascript
+// 用户API
+class UserAPI {
+    static async getProfile() {
+        return api.get('/profile');
+    }
+
+    static async updateProfile(data) {
+        return api.put('/profile', data);
+    }
+
+    static async changePassword(oldPassword, newPassword) {
+        return api.put('/profile/password', {
+            old_password: oldPassword,
+            new_password: newPassword
+        });
+    }
+}
+
+// 邮箱API
+class MailboxAPI {
+    static async getList() {
+        return api.get('/mailboxes');
+    }
+
+    static async create(data) {
+        return api.post('/mailboxes', data);
+    }
+
+    static async delete(id) {
+        return api.delete(`/mailboxes/${id}`);
+    }
+
+    static async getStats() {
+        return api.get('/mailboxes/stats');
+    }
+}
+```
+
+7.4 状态管理
+
+**简单状态管理器**
+```javascript
+class StateManager {
+    constructor() {
+        this.state = {};
+        this.listeners = {};
+    }
+
+    setState(key, value) {
+        const oldValue = this.state[key];
+        this.state[key] = value;
+
+        if (this.listeners[key]) {
+            this.listeners[key].forEach(callback => {
+                callback(value, oldValue);
+            });
+        }
+    }
+
+    getState(key) {
+        return this.state[key];
+    }
+
+    subscribe(key, callback) {
+        if (!this.listeners[key]) {
+            this.listeners[key] = [];
+        }
+        this.listeners[key].push(callback);
+
+        // 返回取消订阅函数
+        return () => {
+            const index = this.listeners[key].indexOf(callback);
+            if (index > -1) {
+                this.listeners[key].splice(index, 1);
+            }
+        };
+    }
+}
+
+// 全局状态管理器
+const store = new StateManager();
+
+// 使用示例
+store.subscribe('user', (user) => {
+    console.log('用户信息更新:', user);
+    updateUserDisplay(user);
+});
+
+store.setState('user', { name: '张三', email: 'zhangsan@example.com' });
+```
+
+===============================================================================
+8. 测试指南
+===============================================================================
+
+8.1 测试策略
+
+**测试金字塔**
+- 单元测试 (70%): 测试单个函数/方法
+- 集成测试 (20%): 测试组件间交互
+- 端到端测试 (10%): 测试完整用户流程
+
+**测试类型**
+- 功能测试: 验证功能正确性
+- 性能测试: 验证性能指标
+- 安全测试: 验证安全性
+- 兼容性测试: 验证浏览器兼容性
+
+8.2 单元测试
+
+**Go单元测试**
+```go
+// user_service_test.go
+package auth
+
+import (
+    "testing"
+    "github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/mock"
+)
+
+// Mock Repository
+type MockUserRepository struct {
+    mock.Mock
+}
+
+func (m *MockUserRepository) Create(user *models.User) error {
+    args := m.Called(user)
+    return args.Error(0)
+}
+
+func (m *MockUserRepository) GetByUsername(username string) (*models.User, error) {
+    args := m.Called(username)
+    return args.Get(0).(*models.User), args.Error(1)
+}
+
+// 测试用户创建
+func TestUserService_CreateUser(t *testing.T) {
+    // 准备
+    mockRepo := new(MockUserRepository)
+    service := NewUserService(mockRepo)
+
+    // 设置Mock期望
+    mockRepo.On("GetByUsername", "testuser").Return(nil, errors.New("用户不存在"))
+    mockRepo.On("Create", mock.AnythingOfType("*models.User")).Return(nil)
+
+    // 执行
+    user, err := service.CreateUser("testuser", "password123", "test@example.com")
+
+    // 验证
+    assert.NoError(t, err)
+    assert.NotNil(t, user)
+    assert.Equal(t, "testuser", user.Username)
+    assert.Equal(t, "test@example.com", user.Email)
+
+    // 验证Mock调用
+    mockRepo.AssertExpectations(t)
+}
+
+// 测试用户创建失败 - 用户已存在
+func TestUserService_CreateUser_UserExists(t *testing.T) {
+    // 准备
+    mockRepo := new(MockUserRepository)
+    service := NewUserService(mockRepo)
+
+    existingUser := &models.User{
+        Username: "testuser",
+        Email:    "test@example.com",
+    }
+
+    // 设置Mock期望
+    mockRepo.On("GetByUsername", "testuser").Return(existingUser, nil)
+
+    // 执行
+    user, err := service.CreateUser("testuser", "password123", "test@example.com")
+
+    // 验证
+    assert.Error(t, err)
+    assert.Nil(t, user)
+    assert.Contains(t, err.Error(), "用户已存在")
+
+    mockRepo.AssertExpectations(t)
+}
+```
+
+**JavaScript单元测试**
+```javascript
+// user-api.test.js
+describe('UserAPI', () => {
+    beforeEach(() => {
+        // 重置axios mock
+        jest.clearAllMocks();
+    });
+
+    describe('getProfile', () => {
+        it('应该成功获取用户信息', async () => {
+            // 准备
+            const mockUser = {
+                id: 1,
+                username: 'testuser',
+                email: 'test@example.com'
+            };
+
+            axios.get.mockResolvedValue({
+                data: {
+                    success: true,
+                    data: mockUser
+                }
+            });
+
+            // 执行
+            const result = await UserAPI.getProfile();
+
+            // 验证
+            expect(result.success).toBe(true);
+            expect(result.data).toEqual(mockUser);
+            expect(axios.get).toHaveBeenCalledWith('/api/profile');
+        });
+
+        it('应该处理获取失败的情况', async () => {
+            // 准备
+            axios.get.mockRejectedValue(new Error('网络错误'));
+
+            // 执行和验证
+            await expect(UserAPI.getProfile()).rejects.toThrow('网络错误');
+        });
+    });
+});
+```
+
+8.3 集成测试
+
+**API集成测试**
+```go
+// integration_test.go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "net/http"
+    "net/http/httptest"
+    "testing"
+
+    "github.com/gin-gonic/gin"
+    "github.com/stretchr/testify/assert"
+)
+
+func TestUserRegistrationFlow(t *testing.T) {
+    // 设置测试环境
+    gin.SetMode(gin.TestMode)
+    router := setupRouter()
+
+    // 1. 测试用户注册
+    registerData := map[string]interface{}{
+        "username": "testuser",
+        "password": "password123",
+        "email":    "test@example.com",
+    }
+
+    jsonData, _ := json.Marshal(registerData)
+    req, _ := http.NewRequest("POST", "/api/register", bytes.NewBuffer(jsonData))
+    req.Header.Set("Content-Type", "application/json")
+
+    w := httptest.NewRecorder()
+    router.ServeHTTP(w, req)
+
+    assert.Equal(t, http.StatusOK, w.Code)
+
+    var response map[string]interface{}
+    json.Unmarshal(w.Body.Bytes(), &response)
+    assert.True(t, response["success"].(bool))
+
+    // 2. 测试用户登录
+    loginData := map[string]interface{}{
+        "username": "testuser",
+        "password": "password123",
+    }
+
+    jsonData, _ = json.Marshal(loginData)
+    req, _ = http.NewRequest("POST", "/api/login", bytes.NewBuffer(jsonData))
+    req.Header.Set("Content-Type", "application/json")
+
+    w = httptest.NewRecorder()
+    router.ServeHTTP(w, req)
+
+    assert.Equal(t, http.StatusOK, w.Code)
+
+    json.Unmarshal(w.Body.Bytes(), &response)
+    assert.True(t, response["success"].(bool))
+
+    // 3. 测试创建邮箱
+    // ... 继续测试流程
+}
+```
+
+8.4 性能测试
+
+**压力测试脚本**
+```bash
+#!/bin/bash
+# load_test.sh
+
+echo "开始性能测试..."
+
+# 测试登录接口
+echo "测试登录接口..."
+ab -n 1000 -c 10 -p login_data.json -T application/json http://localhost:8080/api/login
+
+# 测试邮箱列表接口
+echo "测试邮箱列表接口..."
+ab -n 1000 -c 10 -H "Cookie: session=test_session" http://localhost:8080/api/mailboxes
+
+# 测试邮件发送接口
+echo "测试邮件发送接口..."
+ab -n 100 -c 5 -p email_data.json -T application/json -H "Cookie: session=test_session" http://localhost:8080/api/emails/send
+
+echo "性能测试完成"
+```
+
+**性能监控**
+```go
+// performance_test.go
+func BenchmarkUserService_CreateUser(b *testing.B) {
+    service := setupUserService()
+
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        username := fmt.Sprintf("user%d", i)
+        email := fmt.Sprintf("user%d@example.com", i)
+        _, err := service.CreateUser(username, "password123", email)
+        if err != nil {
+            b.Fatal(err)
+        }
+    }
+}
+
+func BenchmarkEmailService_SendEmail(b *testing.B) {
+    service := setupEmailService()
+
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        err := service.SendEmail("from@example.com", "to@example.com", "Test Subject", "Test Content")
+        if err != nil {
+            b.Fatal(err)
+        }
+    }
+}
+```
+
+===============================================================================
+9. 调试技巧
+===============================================================================
+
+9.1 Go调试技巧
+
+**日志调试**
+```go
+import (
+    "log"
+    "os"
+    "github.com/sirupsen/logrus"
+)
+
+// 设置日志级别
+func setupLogging() {
+    logrus.SetLevel(logrus.DebugLevel)
+    logrus.SetFormatter(&logrus.JSONFormatter{})
+
+    // 输出到文件
+    file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+    if err == nil {
+        logrus.SetOutput(file)
+    }
+}
+
+// 使用结构化日志
+func (s *UserService) CreateUser(username, password, email string) (*models.User, error) {
+    logger := logrus.WithFields(logrus.Fields{
+        "function": "CreateUser",
+        "username": username,
+        "email":    email,
+    })
+
+    logger.Info("开始创建用户")
+
+    // 检查用户是否存在
+    existingUser, err := s.repo.GetByUsername(username)
+    if err == nil && existingUser != nil {
+        logger.Warn("用户已存在")
+        return nil, errors.New("用户已存在")
+    }
+
+    // 创建用户
+    user := &models.User{
+        Username: username,
+        Email:    email,
+    }
+
+    if err := s.repo.Create(user); err != nil {
+        logger.WithError(err).Error("创建用户失败")
+        return nil, err
+    }
+
+    logger.Info("用户创建成功")
+    return user, nil
+}
+```
+
+**使用Delve调试器**
+```bash
+# 安装delve
+go install github.com/go-delve/delve/cmd/dlv@latest
+
+# 启动调试
+dlv debug main.go
+
+# 设置断点
+(dlv) break main.main
+(dlv) break internal/services/user.go:25
+
+# 运行程序
+(dlv) continue
+
+# 查看变量
+(dlv) print username
+(dlv) print user
+
+# 查看调用栈
+(dlv) stack
+
+# 单步执行
+(dlv) next
+(dlv) step
+```
+
+**性能分析**
+```go
+import (
+    _ "net/http/pprof"
+    "net/http"
+)
+
+func main() {
+    // 启动pprof服务
+    go func() {
+        log.Println(http.ListenAndServe("localhost:6060", nil))
+    }()
+
+    // 启动主程序
+    startServer()
+}
+```
+
+```bash
+# CPU性能分析
+go tool pprof http://localhost:6060/debug/pprof/profile?seconds=30
+
+# 内存分析
+go tool pprof http://localhost:6060/debug/pprof/heap
+
+# 查看goroutine
+go tool pprof http://localhost:6060/debug/pprof/goroutine
+```
+
+9.2 前端调试技巧
+
+**浏览器开发者工具**
+```javascript
+// 使用console进行调试
+console.log('变量值:', variable);
+console.error('错误信息:', error);
+console.table(arrayData);
+console.time('操作耗时');
+// ... 执行操作
+console.timeEnd('操作耗时');
+
+// 使用debugger断点
+function processData(data) {
+    debugger; // 浏览器会在此处暂停
+
+    const result = data.map(item => {
+        return {
+            id: item.id,
+            name: item.name.toUpperCase()
+        };
+    });
+
+    return result;
+}
+```
+
+**网络请求调试**
+```javascript
+// 拦截axios请求进行调试
+axios.interceptors.request.use(
+    config => {
+        console.log('发送请求:', config);
+        return config;
+    },
+    error => {
+        console.error('请求错误:', error);
+        return Promise.reject(error);
+    }
+);
+
+axios.interceptors.response.use(
+    response => {
+        console.log('收到响应:', response);
+        return response;
+    },
+    error => {
+        console.error('响应错误:', error);
+        return Promise.reject(error);
+    }
+);
+```
+
+**错误监控**
+```javascript
+// 全局错误处理
+window.addEventListener('error', (event) => {
+    console.error('JavaScript错误:', {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        error: event.error
+    });
+
+    // 发送错误报告到服务器
+    sendErrorReport({
+        type: 'javascript',
+        message: event.message,
+        stack: event.error?.stack,
+        url: window.location.href,
+        userAgent: navigator.userAgent
+    });
+});
+
+// Promise错误处理
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('未处理的Promise错误:', event.reason);
+
+    sendErrorReport({
+        type: 'promise',
+        message: event.reason?.message || 'Promise rejection',
+        stack: event.reason?.stack,
+        url: window.location.href
+    });
+});
+```
+
+9.3 数据库调试
+
+**SQL查询调试**
+```go
+// 启用SQL日志
+db, err := sql.Open("sqlite3", "miko_email.db?_trace=1")
+
+// 或者使用自定义日志
+type LoggingDB struct {
+    *sql.DB
+}
+
+func (db *LoggingDB) Query(query string, args ...interface{}) (*sql.Rows, error) {
+    start := time.Now()
+    rows, err := db.DB.Query(query, args...)
+    duration := time.Since(start)
+
+    log.Printf("SQL Query: %s, Args: %v, Duration: %v, Error: %v",
+        query, args, duration, err)
+
+    return rows, err
+}
+```
+
+**数据库性能分析**
+```sql
+-- 启用查询计划
+EXPLAIN QUERY PLAN SELECT * FROM users WHERE username = 'testuser';
+
+-- 分析索引使用情况
+PRAGMA index_list('users');
+PRAGMA index_info('idx_users_username');
+
+-- 查看表统计信息
+PRAGMA table_info('users');
+PRAGMA stats;
+```
+
+===============================================================================
+10. 贡献指南
+===============================================================================
+
+10.1 贡献流程
+
+**1. 准备工作**
+- Fork项目到个人仓库
+- 克隆到本地开发环境
+- 创建开发分支
+
+```bash
+git clone https://github.com/your-username/miko-email.git
+cd miko-email
+git checkout -b feature/new-feature
+```
+
+**2. 开发规范**
+- 遵循代码规范和风格指南
+- 编写单元测试
+- 更新相关文档
+- 提交信息规范
+
+**3. 提交代码**
+```bash
+# 添加文件
+git add .
+
+# 提交代码（使用规范的提交信息）
+git commit -m "feat: 添加用户邮箱批量创建功能
+
+- 支持批量创建多个邮箱
+- 添加批量操作的参数验证
+- 更新API文档和测试用例
+
+Closes #123"
+
+# 推送到远程仓库
+git push origin feature/new-feature
+```
+
+**4. 创建Pull Request**
+- 在GitHub上创建Pull Request
+- 填写详细的PR描述
+- 等待代码审查
+- 根据反馈修改代码
+
+10.2 提交信息规范
+
+**提交类型**
+- feat: 新功能
+- fix: 修复bug
+- docs: 文档更新
+- style: 代码格式调整
+- refactor: 代码重构
+- test: 测试相关
+- chore: 构建过程或辅助工具的变动
+
+**提交格式**
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+**示例**
+```
+feat(auth): 添加JWT认证支持
+
+- 实现JWT token生成和验证
+- 添加认证中间件
+- 更新登录接口返回token
+- 添加token刷新机制
+
+Breaking Change: 登录接口响应格式变更
+Closes #456
+```
+
+10.3 代码审查标准
+
+**代码质量**
+- 代码逻辑清晰，易于理解
+- 遵循项目代码规范
+- 没有明显的性能问题
+- 错误处理完善
+
+**测试覆盖**
+- 新功能有对应的单元测试
+- 测试用例覆盖主要场景
+- 集成测试通过
+- 性能测试满足要求
+
+**文档完整**
+- API文档更新
+- 代码注释完善
+- 使用说明清晰
+- 变更日志记录
+
+10.4 问题报告
+
+**Bug报告模板**
+```markdown
+## Bug描述
+简要描述遇到的问题
+
+## 复现步骤
+1. 打开页面...
+2. 点击按钮...
+3. 输入数据...
+4. 看到错误...
+
+## 期望行为
+描述期望的正确行为
+
+## 实际行为
+描述实际发生的错误行为
+
+## 环境信息
+- 操作系统: Windows 10
+- 浏览器: Chrome 96
+- Go版本: 1.21
+- 项目版本: v1.0.0
+
+## 附加信息
+- 错误日志
+- 截图
+- 其他相关信息
+```
+
+**功能请求模板**
+```markdown
+## 功能描述
+简要描述希望添加的功能
+
+## 使用场景
+描述什么情况下需要这个功能
+
+## 解决方案
+描述期望的实现方式
+
+## 替代方案
+描述其他可能的实现方式
+
+## 附加信息
+- 相关资料链接
+- 参考实现
+- 其他说明
+```
+
+===============================================================================
+联系方式
+===============================================================================
+
+如有开发相关问题，请联系:
+- QQ: 2014131458
+- 邮箱: 2014131458@qq.com
+- 项目地址: https://github.com/your-repo/miko-email
+
+===============================================================================

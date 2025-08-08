@@ -1,10 +1,26 @@
 ===============================================================================
-                            Miko邮箱系统部署指南
+                        思.凡邮箱系统部署指南 v2.0
 ===============================================================================
 
-版本: v1.0
-更新时间: 2025-01-24
-作者: Miko Team (QQ: 2014131458)
+📋 文档信息
+-----------
+- 文档版本: v2.0.0
+- 系统版本: v2.0.0
+- 更新时间: 2025-08-08
+- 维护团队: 思.凡开发团队
+- 技术支持: QQ 2014131458
+- 邮箱支持: 2014131458@qq.com
+
+🎯 部署概述
+-----------
+本指南将帮助您在不同环境中部署思.凡邮箱系统，包括开发环境、测试环境和生产环境。
+系统支持多种部署方式：源码部署、Docker部署、二进制部署等。
+
+⚠️ **重要提醒**
+- 生产环境部署前请仔细阅读安全配置章节
+- 建议先在测试环境验证所有功能
+- 部署前请备份现有数据
+- 确保服务器满足最低配置要求
 
 ===============================================================================
 目录
@@ -25,22 +41,130 @@
 1. 系统要求
 ===============================================================================
 
-最低配置:
-- CPU: 1核心
-- 内存: 512MB
-- 磁盘: 1GB可用空间
-- 操作系统: Linux/Windows/macOS
+1.1 硬件要求
+-----------
 
-推荐配置:
+**🔧 最低配置** (适用于测试环境):
+- CPU: 1核心 (x86_64/ARM64)
+- 内存: 512MB RAM
+- 磁盘: 1GB可用空间 (SSD推荐)
+- 网络: 1Mbps带宽
+
+**⚡ 推荐配置** (适用于小型生产环境):
 - CPU: 2核心或以上
-- 内存: 2GB或以上
-- 磁盘: 10GB可用空间
-- 操作系统: Ubuntu 20.04+ / CentOS 7+ / Windows 10+
+- 内存: 2GB RAM或以上
+- 磁盘: 10GB可用空间 (SSD强烈推荐)
+- 网络: 10Mbps带宽或以上
 
-软件依赖:
-- Go 1.21或更高版本
-- Git (用于克隆代码)
-- 现代浏览器 (Chrome/Firefox/Safari/Edge)
+**🚀 高性能配置** (适用于大型生产环境):
+- CPU: 4核心或以上
+- 内存: 8GB RAM或以上
+- 磁盘: 50GB可用空间 (NVMe SSD)
+- 网络: 100Mbps带宽或以上
+- 负载均衡: 支持多实例部署
+
+1.2 操作系统支持
+---------------
+
+**✅ 完全支持**:
+- Ubuntu 20.04+ / 22.04+ (推荐)
+- CentOS 7+ / Rocky Linux 8+
+- Debian 10+ / 11+
+- Windows 10+ / Windows Server 2019+
+- macOS 10.15+ (开发环境)
+
+**🔧 架构支持**:
+- x86_64 (AMD64) - 主要支持
+- ARM64 (AArch64) - 实验性支持
+- ARM32 - 有限支持
+
+1.3 软件依赖
+-----------
+
+**必需软件**:
+- Go 1.21+ (编译环境)
+- Git 2.0+ (代码管理)
+- SQLite 3.35+ (数据库，自动包含)
+
+**可选软件**:
+- Docker 20.10+ (容器部署)
+- Docker Compose 2.0+ (编排部署)
+- Nginx 1.18+ (反向代理)
+- Let's Encrypt (SSL证书)
+- Prometheus (监控)
+- Grafana (可视化)
+
+**开发工具**:
+- VS Code / GoLand (IDE)
+- Postman / Insomnia (API测试)
+- SQLite Browser (数据库管理)
+- Git GUI工具
+
+1.4 网络要求
+-----------
+
+**端口规划**:
+- 8080: Web管理界面 (HTTP)
+- 8443: Web管理界面 (HTTPS)
+- 25: SMTP (标准邮件发送)
+- 587: SMTP (STARTTLS提交)
+- 465: SMTPS (SSL加密发送)
+- 143: IMAP (邮件接收)
+- 993: IMAPS (SSL加密接收)
+- 110: POP3 (邮件下载)
+- 995: POP3S (SSL加密下载)
+
+**防火墙配置**:
+```bash
+# Ubuntu/Debian (ufw)
+sudo ufw allow 8080/tcp
+sudo ufw allow 25/tcp
+sudo ufw allow 587/tcp
+sudo ufw allow 465/tcp
+sudo ufw allow 143/tcp
+sudo ufw allow 993/tcp
+sudo ufw allow 110/tcp
+sudo ufw allow 995/tcp
+
+# CentOS/RHEL (firewalld)
+sudo firewall-cmd --permanent --add-port=8080/tcp
+sudo firewall-cmd --permanent --add-port=25/tcp
+sudo firewall-cmd --permanent --add-port=587/tcp
+sudo firewall-cmd --permanent --add-port=465/tcp
+sudo firewall-cmd --permanent --add-port=143/tcp
+sudo firewall-cmd --permanent --add-port=993/tcp
+sudo firewall-cmd --permanent --add-port=110/tcp
+sudo firewall-cmd --permanent --add-port=995/tcp
+sudo firewall-cmd --reload
+```
+
+**DNS要求**:
+- A记录: 指向服务器IP
+- MX记录: 邮件交换记录
+- SPF记录: 发件人策略框架
+- DKIM记录: 域名密钥识别邮件
+- DMARC记录: 域名消息认证报告一致性
+
+1.5 安全要求
+-----------
+
+**系统安全**:
+- 定期更新操作系统
+- 配置防火墙规则
+- 禁用不必要的服务
+- 使用非root用户运行
+
+**应用安全**:
+- 修改默认密码
+- 配置SSL证书
+- 启用访问日志
+- 设置IP白名单
+
+**数据安全**:
+- 定期备份数据
+- 加密敏感信息
+- 监控异常访问
+- 设置数据保留策略
 
 ===============================================================================
 2. 环境准备

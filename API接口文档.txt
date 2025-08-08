@@ -1,29 +1,88 @@
 ===============================================================================
-                           Miko邮箱系统 API接口文档
+                        思.凡邮箱系统 API接口文档 v2.0
 ===============================================================================
 
-基础信息
---------
-- 基础URL: http://localhost:8080
+📋 文档信息
+-----------
+- 文档版本: v2.0.0
+- 系统版本: v2.0.0
+- 更新时间: 2025-08-08
+- 维护团队: 思.凡开发团队
+- 联系方式: QQ 2014131458
+
+🌐 基础信息
+-----------
+- 基础URL: http://localhost:8080 (开发环境)
+- 生产URL: https://your-domain.com (生产环境)
 - 内容类型: application/json; charset=utf-8
-- 认证方式: Session Cookie认证
-- 响应格式: JSON
+- 认证方式: Session Cookie + JWT Token (双重认证)
+- 响应格式: JSON (统一响应格式)
+- API版本: v1 (当前版本)
+- 字符编码: UTF-8
 
-通用响应格式
-------------
+🔐 认证机制
+-----------
+1. **Session Cookie认证** (Web界面)
+   - 登录后自动设置Cookie
+   - 适用于浏览器环境
+   - 自动过期管理
 
-成功响应:
+2. **JWT Token认证** (API调用)
+   - 请求头: Authorization: Bearer <token>
+   - 适用于移动端和第三方集成
+   - 支持刷新机制
+
+3. **管理员认证**
+   - 独立的管理员登录接口
+   - 更高的安全级别
+   - 操作日志记录
+
+📊 通用响应格式
+---------------
+
+**成功响应格式**:
+```json
 {
   "success": true,
   "message": "操作成功",
-  "data": {}
+  "data": {
+    // 具体数据内容
+  },
+  "pagination": {        // 分页信息 (列表接口)
+    "page": 1,
+    "limit": 20,
+    "total": 100,
+    "pages": 5
+  },
+  "timestamp": "2025-08-08T10:30:00Z"
 }
+```
 
-错误响应:
+**错误响应格式**:
+```json
 {
   "success": false,
-  "message": "错误信息"
+  "message": "错误信息描述",
+  "error": {
+    "code": "USER_NOT_FOUND",    // 错误代码
+    "detail": "详细错误信息",     // 详细描述
+    "field": "username"          // 相关字段 (验证错误时)
+  },
+  "timestamp": "2025-08-08T10:30:00Z"
 }
+```
+
+**HTTP状态码说明**:
+- 200 OK - 请求成功
+- 201 Created - 资源创建成功
+- 400 Bad Request - 请求参数错误
+- 401 Unauthorized - 未认证或认证失败
+- 403 Forbidden - 权限不足
+- 404 Not Found - 资源不存在
+- 409 Conflict - 资源冲突 (如用户名已存在)
+- 422 Unprocessable Entity - 数据验证失败
+- 429 Too Many Requests - 请求频率超限
+- 500 Internal Server Error - 服务器内部错误
 
 ===============================================================================
 1. 认证接口
@@ -285,41 +344,197 @@ URL: GET /api/forward-statistics
 URL: GET /api/admin/domains
 描述: 获取所有域名列表
 认证: 需要管理员权限
+查询参数:
+  - page: 页码 (默认1)
+  - limit: 每页数量 (默认20)
+  - search: 搜索关键词 (可选)
+  - status: 域名状态 (active/inactive/all, 默认all)
+响应:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "example.com",
+      "is_verified": true,
+      "is_active": true,
+      "mx_record": "mail.example.com",
+      "a_record": "192.168.1.100",
+      "txt_record": "v=spf1 ip4:192.168.1.100 ~all",
+      "spf_record": "v=spf1 ip4:192.168.1.100 ~all",
+      "dmarc_record": "v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com",
+      "dkim_record": "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3...",
+      "ptr_record": "example.com",
+      "sender_verification_status": "verified",
+      "receiver_verification_status": "verified",
+      "mailbox_count": 15,
+      "email_count": 1250,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-08-08T10:30:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 5,
+    "pages": 1
+  }
+}
+```
 
-5.1.2 创建域名
+5.1.2 创建域名 (完整模式)
 URL: POST /api/admin/domains
-描述: 创建新域名
+描述: 创建新域名 (手动指定所有DNS记录)
 认证: 需要管理员权限
+请求体:
+```json
+{
+  "name": "newdomain.com",
+  "mx_record": "mail.newdomain.com",
+  "a_record": "192.168.1.100",
+  "txt_record": "v=spf1 ip4:192.168.1.100 ~all",
+  "spf_record": "v=spf1 ip4:192.168.1.100 ~all",
+  "dmarc_record": "v=DMARC1; p=quarantine; rua=mailto:dmarc@newdomain.com",
+  "dkim_record": "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3...",
+  "ptr_record": "newdomain.com"
+}
+```
 
-5.1.3 简化创建域名
+5.1.3 简化创建域名 ⭐
 URL: POST /api/admin/domains/simple
-描述: 简化方式创建域名
+描述: 简化方式创建域名 (自动生成DNS记录)
 认证: 需要管理员权限
+请求体:
+```json
+{
+  "name": "autodomain.com"
+}
+```
+响应:
+```json
+{
+  "success": true,
+  "message": "域名创建成功",
+  "data": {
+    "id": 2,
+    "name": "autodomain.com",
+    "mx_record": "autodomain.com",
+    "a_record": "192.168.31.11",
+    "txt_record": "v=spf1 ip4:192.168.31.11 ~all",
+    "spf_record": "v=spf1 ip4:192.168.31.11 ~all",
+    "dmarc_record": "v=DMARC1; p=quarantine; rua=mailto:dmarc@autodomain.com",
+    "dkim_record": "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC...",
+    "ptr_record": "autodomain.com",
+    "is_verified": false,
+    "is_active": true
+  }
+}
+```
 
-5.1.4 更新域名
+5.1.4 获取域名使用情况 🆕
+URL: GET /api/admin/domains/:id/usage
+描述: 获取域名详细使用情况
+认证: 需要管理员权限
+响应:
+```json
+{
+  "success": true,
+  "data": {
+    "domain_id": 1,
+    "domain_name": "example.com",
+    "mailbox_count": 15,
+    "active_mailbox_count": 12,
+    "inactive_mailbox_count": 3,
+    "email_count": 1250,
+    "attachment_count": 89,
+    "total_size_mb": 156.7,
+    "users": [
+      {
+        "user_id": 1,
+        "username": "user1",
+        "mailbox_count": 5,
+        "email_count": 234
+      }
+    ]
+  }
+}
+```
+
+5.1.5 更新域名
 URL: PUT /api/admin/domains/:id
 描述: 更新域名信息
 认证: 需要管理员权限
+请求体: 同创建域名
 
-5.1.5 删除域名
+5.1.6 删除域名 ⚠️
 URL: DELETE /api/admin/domains/:id
-描述: 删除域名
+描述: 删除域名 (级联删除所有相关数据)
 认证: 需要管理员权限
+查询参数:
+  - force: 强制删除 (true/false, 默认false)
+响应:
+```json
+{
+  "success": true,
+  "message": "域名删除成功",
+  "data": {
+    "deleted_mailboxes": 15,
+    "deleted_emails": 1250,
+    "deleted_attachments": 89,
+    "freed_space_mb": 156.7
+  }
+}
+```
 
-5.1.6 验证域名
+5.1.7 验证域名DNS
 URL: POST /api/admin/domains/:id/verify
-描述: 验证域名配置
+描述: 验证域名DNS配置
 认证: 需要管理员权限
+响应:
+```json
+{
+  "success": true,
+  "data": {
+    "domain": "example.com",
+    "mx_verified": true,
+    "a_verified": true,
+    "spf_verified": true,
+    "dkim_verified": true,
+    "dmarc_verified": false,
+    "verification_details": {
+      "mx_record": {
+        "expected": "mail.example.com",
+        "actual": "mail.example.com",
+        "status": "verified"
+      },
+      "dmarc_record": {
+        "expected": "v=DMARC1; p=quarantine",
+        "actual": null,
+        "status": "not_found"
+      }
+    }
+  }
+}
+```
 
-5.1.7 验证发件配置
-URL: POST /api/admin/domains/:id/verify-sender
-描述: 验证域名发件配置
-认证: 需要管理员权限
-
-5.1.8 验证收件配置
-URL: POST /api/admin/domains/:id/verify-receiver
-描述: 验证域名收件配置
-认证: 需要管理员权限
+5.1.8 生成DKIM记录
+URL: GET /api/domains/dkim?domain=example.com
+描述: 生成或获取域名的DKIM记录
+认证: 无需认证 (公开接口)
+响应:
+```json
+{
+  "success": true,
+  "data": {
+    "domain": "example.com",
+    "selector": "default",
+    "record": "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC...",
+    "public_key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC...",
+    "dns_record": "default._domainkey.example.com IN TXT \"v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC...\""
+  }
+}
+```
 
 5.2 用户管理
 -----------
@@ -328,53 +543,461 @@ URL: POST /api/admin/domains/:id/verify-receiver
 URL: GET /api/admin/users
 描述: 获取所有用户列表
 认证: 需要管理员权限
+查询参数:
+  - page: 页码 (默认1)
+  - limit: 每页数量 (默认20)
+  - search: 搜索用户名或邮箱 (可选)
+  - status: 用户状态 (active/inactive/all, 默认all)
+  - sort: 排序字段 (created_at/username/email, 默认created_at)
+  - order: 排序方向 (asc/desc, 默认desc)
+响应:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "username": "user1",
+      "email": "user1@example.com",
+      "contribution": 100,
+      "is_active": true,
+      "mailbox_count": 5,
+      "email_count": 234,
+      "last_login": "2025-08-08T09:30:00Z",
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-08-08T10:30:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 150,
+    "pages": 8
+  }
+}
+```
 
 5.2.2 获取用户详情
 URL: GET /api/admin/users/:id
-描述: 获取指定用户详情
+描述: 获取指定用户详细信息
 认证: 需要管理员权限
+响应:
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "username": "user1",
+    "email": "user1@example.com",
+    "contribution": 100,
+    "is_active": true,
+    "mailbox_count": 5,
+    "email_count": 234,
+    "total_size_mb": 45.6,
+    "last_login": "2025-08-08T09:30:00Z",
+    "login_count": 156,
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-08-08T10:30:00Z",
+    "mailboxes": [
+      {
+        "id": 1,
+        "address": "user1@example.com",
+        "is_active": true,
+        "email_count": 89,
+        "size_mb": 12.3
+      }
+    ],
+    "recent_activity": [
+      {
+        "action": "login",
+        "timestamp": "2025-08-08T09:30:00Z",
+        "ip": "192.168.1.100"
+      }
+    ]
+  }
+}
+```
 
 5.2.3 获取用户邮箱
 URL: GET /api/admin/users/:id/mailboxes
 描述: 获取指定用户的邮箱列表
 认证: 需要管理员权限
+查询参数:
+  - include_stats: 是否包含统计信息 (true/false, 默认false)
+响应:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "prefix": "user1",
+      "domain": "example.com",
+      "full_address": "user1@example.com",
+      "is_active": true,
+      "quota_used": 45,
+      "quota_limit": 1000,
+      "email_count": 89,
+      "unread_count": 5,
+      "last_activity": "2025-08-08T09:30:00Z",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  ]
+}
+```
 
 5.2.4 更新用户状态
 URL: PUT /api/admin/users/:id/status
 描述: 更新用户状态
 认证: 需要管理员权限
+请求体:
+```json
+{
+  "is_active": false,
+  "reason": "违规操作"
+}
+```
 
-5.2.5 删除用户
+5.2.5 删除用户 ⚠️
 URL: DELETE /api/admin/users/:id
-描述: 删除用户
+描述: 删除用户 (级联删除所有相关数据)
 认证: 需要管理员权限
+查询参数:
+  - force: 强制删除 (true/false, 默认false)
+响应:
+```json
+{
+  "success": true,
+  "message": "用户删除成功",
+  "data": {
+    "deleted_mailboxes": 5,
+    "deleted_emails": 234,
+    "deleted_attachments": 23,
+    "deleted_forwards": 3,
+    "freed_space_mb": 45.6
+  }
+}
+```
+
+5.2.6 重置用户密码 🆕
+URL: POST /api/admin/users/:id/reset-password
+描述: 重置用户密码
+认证: 需要管理员权限
+请求体:
+```json
+{
+  "new_password": "newpassword123"
+}
+```
+
+5.2.7 获取用户统计 🆕
+URL: GET /api/admin/users/stats
+描述: 获取用户统计信息
+认证: 需要管理员权限
+响应:
+```json
+{
+  "success": true,
+  "data": {
+    "total_users": 150,
+    "active_users": 142,
+    "inactive_users": 8,
+    "new_users_today": 3,
+    "new_users_this_week": 15,
+    "new_users_this_month": 67,
+    "top_contributors": [
+      {
+        "username": "user1",
+        "contribution": 500
+      }
+    ]
+  }
+}
+```
 
 5.3 邮箱管理（管理员）
 ---------------------
 
 5.3.1 获取所有邮箱
 URL: GET /api/admin/mailboxes
-描述: 获取所有邮箱列表
+描述: 获取所有邮箱列表 (跨用户)
 认证: 需要管理员权限
+查询参数:
+  - page: 页码 (默认1)
+  - limit: 每页数量 (默认20)
+  - search: 搜索邮箱地址 (可选)
+  - domain_id: 按域名筛选 (可选)
+  - user_id: 按用户筛选 (可选)
+  - status: 邮箱状态 (active/inactive/all, 默认all)
+响应:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "prefix": "user1",
+      "domain": "example.com",
+      "full_address": "user1@example.com",
+      "user_id": 1,
+      "username": "user1",
+      "is_active": true,
+      "quota_used": 45,
+      "quota_limit": 1000,
+      "email_count": 89,
+      "unread_count": 5,
+      "last_activity": "2025-08-08T09:30:00Z",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  ]
+}
+```
 
 5.3.2 更新邮箱状态
 URL: PUT /api/admin/mailboxes/:id/status
 描述: 更新邮箱状态
 认证: 需要管理员权限
 请求体:
+```json
 {
-  "status": "active"  // 或 "suspended"
+  "is_active": false,
+  "reason": "违规使用"
 }
+```
 
-5.3.3 删除邮箱（管理员）
+5.3.3 删除邮箱（管理员）⚠️
 URL: DELETE /api/admin/mailboxes/:id
-描述: 管理员删除邮箱
+描述: 管理员删除邮箱 (级联删除邮件和附件)
 认证: 需要管理员权限
+查询参数:
+  - force: 强制删除 (true/false, 默认false)
+响应:
+```json
+{
+  "success": true,
+  "message": "邮箱删除成功",
+  "data": {
+    "deleted_emails": 89,
+    "deleted_attachments": 12,
+    "freed_space_mb": 23.4
+  }
+}
+```
 
-5.3.4 获取邮箱统计
+5.3.4 获取邮箱详细统计
 URL: GET /api/admin/mailboxes/:id/stats
-描述: 获取邮箱统计信息
+描述: 获取邮箱详细统计信息
 认证: 需要管理员权限
+响应:
+```json
+{
+  "success": true,
+  "data": {
+    "mailbox_id": 1,
+    "address": "user1@example.com",
+    "owner": "user1",
+    "email_stats": {
+      "total_emails": 89,
+      "inbox_count": 67,
+      "sent_count": 15,
+      "draft_count": 2,
+      "trash_count": 5,
+      "unread_count": 5
+    },
+    "storage_stats": {
+      "total_size_mb": 23.4,
+      "attachment_size_mb": 8.9,
+      "quota_used_percent": 2.34
+    },
+    "activity_stats": {
+      "last_login": "2025-08-08T09:30:00Z",
+      "last_email_received": "2025-08-08T08:45:00Z",
+      "last_email_sent": "2025-08-07T16:20:00Z",
+      "login_count_today": 3,
+      "emails_sent_today": 2,
+      "emails_received_today": 8
+    }
+  }
+}
+```
+
+5.3.5 批量操作邮箱 🆕
+URL: POST /api/admin/mailboxes/batch
+描述: 批量操作邮箱 (启用/禁用/删除)
+认证: 需要管理员权限
+请求体:
+```json
+{
+  "action": "disable",  // enable/disable/delete
+  "mailbox_ids": [1, 2, 3, 4, 5],
+  "reason": "批量维护"
+}
+```
+
+5.4 系统监控 🆕
+--------------
+
+5.4.1 获取系统状态
+URL: GET /api/admin/system/status
+描述: 获取系统运行状态
+认证: 需要管理员权限
+响应:
+```json
+{
+  "success": true,
+  "data": {
+    "system": {
+      "uptime_seconds": 86400,
+      "version": "v2.0.0",
+      "go_version": "go1.21.0",
+      "build_time": "2025-08-08T00:00:00Z"
+    },
+    "database": {
+      "status": "healthy",
+      "size_mb": 156.7,
+      "connection_count": 5,
+      "last_backup": "2025-08-08T02:00:00Z"
+    },
+    "services": {
+      "smtp": {
+        "status": "running",
+        "port": 25,
+        "connections": 3
+      },
+      "imap": {
+        "status": "running",
+        "port": 143,
+        "connections": 8
+      },
+      "pop3": {
+        "status": "running",
+        "port": 110,
+        "connections": 2
+      },
+      "web": {
+        "status": "running",
+        "port": 8080,
+        "connections": 15
+      }
+    },
+    "performance": {
+      "cpu_usage_percent": 15.6,
+      "memory_usage_mb": 234.5,
+      "disk_usage_percent": 45.2,
+      "avg_response_time_ms": 125
+    }
+  }
+}
+```
+
+5.4.2 获取系统统计
+URL: GET /api/admin/system/stats
+描述: 获取系统统计数据
+认证: 需要管理员权限
+查询参数:
+  - period: 统计周期 (today/week/month/year, 默认today)
+响应:
+```json
+{
+  "success": true,
+  "data": {
+    "period": "today",
+    "users": {
+      "total": 150,
+      "active": 142,
+      "new_registrations": 3,
+      "active_sessions": 25
+    },
+    "mailboxes": {
+      "total": 567,
+      "active": 523,
+      "new_created": 8
+    },
+    "emails": {
+      "total_sent": 1234,
+      "total_received": 2345,
+      "total_forwarded": 156,
+      "avg_size_kb": 45.6
+    },
+    "domains": {
+      "total": 12,
+      "verified": 10,
+      "pending": 2
+    },
+    "storage": {
+      "total_size_gb": 2.34,
+      "attachment_size_gb": 0.89,
+      "database_size_mb": 156.7
+    }
+  }
+}
+```
+
+5.4.3 获取实时监控数据 🆕
+URL: GET /api/admin/system/realtime
+描述: 获取实时监控数据 (WebSocket)
+认证: 需要管理员权限
+WebSocket连接: ws://localhost:8080/api/admin/system/realtime
+数据格式:
+```json
+{
+  "type": "system_stats",
+  "timestamp": "2025-08-08T10:30:00Z",
+  "data": {
+    "cpu_usage": 15.6,
+    "memory_usage": 234.5,
+    "active_connections": 25,
+    "emails_per_minute": 12,
+    "errors_per_minute": 0
+  }
+}
+```
+
+5.4.4 系统健康检查
+URL: GET /api/health
+描述: 系统健康检查 (无需认证)
+认证: 无需认证
+响应:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-08-08T10:30:00Z",
+  "version": "v2.0.0",
+  "services": {
+    "database": "healthy",
+    "smtp": "healthy",
+    "imap": "healthy",
+    "pop3": "healthy"
+  },
+  "uptime_seconds": 86400
+}
+```
+
+5.5 日志管理 🆕
+--------------
+
+5.5.1 获取系统日志
+URL: GET /api/admin/logs
+描述: 获取系统日志
+认证: 需要管理员权限
+查询参数:
+  - level: 日志级别 (debug/info/warn/error, 默认all)
+  - start_time: 开始时间 (ISO8601格式)
+  - end_time: 结束时间 (ISO8601格式)
+  - limit: 返回条数 (默认100, 最大1000)
+  - search: 搜索关键词 (可选)
+
+5.5.2 获取访问日志
+URL: GET /api/admin/logs/access
+描述: 获取访问日志
+认证: 需要管理员权限
+查询参数: 同系统日志
+
+5.5.3 获取错误日志
+URL: GET /api/admin/logs/errors
+描述: 获取错误日志
+认证: 需要管理员权限
+查询参数: 同系统日志
 
 ===============================================================================
 6. 公共接口
@@ -449,52 +1072,420 @@ URL: GET /api/domains/dkim
 6. 分页查询默认每页20条，最大100条
 
 ===============================================================================
-10. 示例代码
+10. 示例代码和SDK
 ===============================================================================
 
-JavaScript示例:
---------------
-// 登录
-fetch('/api/login', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    username: 'testuser',
-    password: 'password123'
-  })
-})
-.then(response => response.json())
-.then(data => console.log(data));
+10.1 JavaScript/TypeScript SDK
+------------------------------
+
+**安装和初始化**
+```javascript
+// 创建API客户端
+class MikoEmailAPI {
+  constructor(baseURL = 'http://localhost:8080', options = {}) {
+    this.baseURL = baseURL;
+    this.token = options.token || localStorage.getItem('miko_token');
+    this.axios = axios.create({
+      baseURL: baseURL + '/api',
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    this.setupInterceptors();
+  }
+
+  setupInterceptors() {
+    // 请求拦截器 - 添加认证头
+    this.axios.interceptors.request.use(config => {
+      if (this.token) {
+        config.headers.Authorization = `Bearer ${this.token}`;
+      }
+      return config;
+    });
+
+    // 响应拦截器 - 处理错误
+    this.axios.interceptors.response.use(
+      response => response.data,
+      error => {
+        if (error.response?.status === 401) {
+          this.handleAuthError();
+        }
+        throw error;
+      }
+    );
+  }
+
+  handleAuthError() {
+    localStorage.removeItem('miko_token');
+    window.location.href = '/login';
+  }
+}
+
+// 使用示例
+const api = new MikoEmailAPI();
+```
+
+**用户认证**
+```javascript
+// 用户登录
+async function login(username, password) {
+  try {
+    const response = await api.axios.post('/login', {
+      username,
+      password
+    });
+
+    if (response.success) {
+      api.token = response.data.token;
+      localStorage.setItem('miko_token', response.data.token);
+      return response.data.user;
+    }
+  } catch (error) {
+    console.error('登录失败:', error);
+    throw error;
+  }
+}
+
+// 用户注册
+async function register(userData) {
+  try {
+    const response = await api.axios.post('/register', userData);
+    return response;
+  } catch (error) {
+    console.error('注册失败:', error);
+    throw error;
+  }
+}
+
+// 获取用户信息
+async function getProfile() {
+  try {
+    const response = await api.axios.get('/profile');
+    return response.data;
+  } catch (error) {
+    console.error('获取用户信息失败:', error);
+    throw error;
+  }
+}
+```
+
+**邮箱管理**
+```javascript
+// 获取邮箱列表
+async function getMailboxes() {
+  try {
+    const response = await api.axios.get('/mailboxes');
+    return response.data;
+  } catch (error) {
+    console.error('获取邮箱列表失败:', error);
+    throw error;
+  }
+}
+
+// 创建邮箱
+async function createMailbox(prefix, domainId, password) {
+  try {
+    const response = await api.axios.post('/mailboxes', {
+      prefix,
+      domain_id: domainId,
+      password
+    });
+    return response.data;
+  } catch (error) {
+    console.error('创建邮箱失败:', error);
+    throw error;
+  }
+}
+
+// 批量创建邮箱
+async function createMailboxesBatch(prefixes, domainId) {
+  try {
+    const response = await api.axios.post('/mailboxes/batch', {
+      prefixes,
+      domain_id: domainId
+    });
+    return response.data;
+  } catch (error) {
+    console.error('批量创建邮箱失败:', error);
+    throw error;
+  }
+}
+
+// 删除邮箱
+async function deleteMailbox(mailboxId) {
+  try {
+    const response = await api.axios.delete(`/mailboxes/${mailboxId}`);
+    return response;
+  } catch (error) {
+    console.error('删除邮箱失败:', error);
+    throw error;
+  }
+}
+```
+
+**邮件操作**
+```javascript
+// 获取邮件列表
+async function getEmails(options = {}) {
+  try {
+    const params = new URLSearchParams();
+    if (options.mailbox) params.append('mailbox', options.mailbox);
+    if (options.type) params.append('type', options.type);
+    if (options.page) params.append('page', options.page);
+    if (options.limit) params.append('limit', options.limit);
+
+    const response = await api.axios.get(`/emails?${params}`);
+    return response.data;
+  } catch (error) {
+    console.error('获取邮件列表失败:', error);
+    throw error;
+  }
+}
 
 // 发送邮件
-const formData = new FormData();
-formData.append('from', 'sender@example.com');
-formData.append('to', 'recipient@example.com');
-formData.append('subject', '测试邮件');
-formData.append('content', '这是一封测试邮件');
+async function sendEmail(emailData, attachments = []) {
+  try {
+    const formData = new FormData();
+    formData.append('from', emailData.from);
+    formData.append('to', emailData.to);
+    formData.append('subject', emailData.subject);
+    formData.append('content', emailData.content);
 
-fetch('/api/emails/send', {
-  method: 'POST',
-  body: formData
-})
-.then(response => response.json())
-.then(data => console.log(data));
+    if (emailData.cc) formData.append('cc', emailData.cc);
+    if (emailData.bcc) formData.append('bcc', emailData.bcc);
 
-cURL示例:
---------
+    // 添加附件
+    attachments.forEach((file, index) => {
+      formData.append('attachments', file);
+    });
+
+    const response = await api.axios.post('/emails/send', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+
+    return response;
+  } catch (error) {
+    console.error('发送邮件失败:', error);
+    throw error;
+  }
+}
+
+// 获取邮件详情
+async function getEmailDetail(emailId, mailbox) {
+  try {
+    const params = mailbox ? `?mailbox=${encodeURIComponent(mailbox)}` : '';
+    const response = await api.axios.get(`/emails/${emailId}${params}`);
+    return response.data;
+  } catch (error) {
+    console.error('获取邮件详情失败:', error);
+    throw error;
+  }
+}
+```
+
+10.2 Python SDK
+---------------
+
+**安装和初始化**
+```python
+import requests
+import json
+from typing import Optional, Dict, List, Any
+
+class MikoEmailAPI:
+    def __init__(self, base_url: str = "http://localhost:8080", token: Optional[str] = None):
+        self.base_url = base_url.rstrip('/')
+        self.api_url = f"{self.base_url}/api"
+        self.token = token
+        self.session = requests.Session()
+
+        if self.token:
+            self.session.headers.update({
+                'Authorization': f'Bearer {self.token}'
+            })
+
+    def _request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
+        """发送HTTP请求"""
+        url = f"{self.api_url}/{endpoint.lstrip('/')}"
+
+        try:
+            response = self.session.request(method, url, **kwargs)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"请求失败: {e}")
+            raise
+
+    def login(self, username: str, password: str) -> Dict[str, Any]:
+        """用户登录"""
+        data = {
+            'username': username,
+            'password': password
+        }
+
+        response = self._request('POST', '/login', json=data)
+
+        if response.get('success') and 'token' in response.get('data', {}):
+            self.token = response['data']['token']
+            self.session.headers.update({
+                'Authorization': f'Bearer {self.token}'
+            })
+
+        return response
+
+    def register(self, username: str, password: str, email: str,
+                domain_prefix: str, domain_id: int, invite_code: Optional[str] = None) -> Dict[str, Any]:
+        """用户注册"""
+        data = {
+            'username': username,
+            'password': password,
+            'email': email,
+            'domain_prefix': domain_prefix,
+            'domain_id': domain_id
+        }
+
+        if invite_code:
+            data['invite_code'] = invite_code
+
+        return self._request('POST', '/register', json=data)
+
+    def get_mailboxes(self) -> Dict[str, Any]:
+        """获取邮箱列表"""
+        return self._request('GET', '/mailboxes')
+
+    def create_mailbox(self, prefix: str, domain_id: int, password: str) -> Dict[str, Any]:
+        """创建邮箱"""
+        data = {
+            'prefix': prefix,
+            'domain_id': domain_id,
+            'password': password
+        }
+        return self._request('POST', '/mailboxes', json=data)
+
+    def send_email(self, from_addr: str, to_addr: str, subject: str,
+                   content: str, cc: Optional[str] = None, bcc: Optional[str] = None,
+                   attachments: Optional[List[str]] = None) -> Dict[str, Any]:
+        """发送邮件"""
+        data = {
+            'from': from_addr,
+            'to': to_addr,
+            'subject': subject,
+            'content': content
+        }
+
+        if cc:
+            data['cc'] = cc
+        if bcc:
+            data['bcc'] = bcc
+
+        files = []
+        if attachments:
+            for file_path in attachments:
+                with open(file_path, 'rb') as f:
+                    files.append(('attachments', f))
+
+        if files:
+            return self._request('POST', '/emails/send', data=data, files=files)
+        else:
+            return self._request('POST', '/emails/send', data=data)
+
+# 使用示例
+api = MikoEmailAPI()
+
 # 登录
-curl -X POST http://localhost:8080/api/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"password123"}' \
-  -c cookies.txt
+login_result = api.login('testuser', 'password123')
+print(f"登录结果: {login_result}")
 
-# 获取邮件列表
-curl -X GET http://localhost:8080/api/emails \
-  -b cookies.txt
+# 获取邮箱列表
+mailboxes = api.get_mailboxes()
+print(f"邮箱列表: {mailboxes}")
 
 # 发送邮件
+send_result = api.send_email(
+    from_addr='sender@example.com',
+    to_addr='recipient@example.com',
+    subject='测试邮件',
+    content='这是一封测试邮件'
+)
+print(f"发送结果: {send_result}")
+```
+
+10.3 cURL命令示例
+-----------------
+
+**用户认证**
+```bash
+# 用户登录
+curl -X POST http://localhost:8080/api/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser",
+    "password": "password123"
+  }' \
+  -c cookies.txt
+
+# 管理员登录
+curl -X POST http://localhost:8080/api/admin/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "tgx123456"
+  }' \
+  -c admin_cookies.txt
+
+# 用户注册
+curl -X POST http://localhost:8080/api/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "newuser",
+    "password": "password123",
+    "email": "newuser@example.com",
+    "domain_prefix": "newuser",
+    "domain_id": 1
+  }'
+```
+
+**邮箱管理**
+```bash
+# 获取邮箱列表
+curl -X GET http://localhost:8080/api/mailboxes \
+  -b cookies.txt
+
+# 创建邮箱
+curl -X POST http://localhost:8080/api/mailboxes \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{
+    "prefix": "test",
+    "domain_id": 1,
+    "password": "mailbox123"
+  }'
+
+# 批量创建邮箱
+curl -X POST http://localhost:8080/api/mailboxes/batch \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{
+    "prefixes": ["test1", "test2", "test3"],
+    "domain_id": 1
+  }'
+
+# 删除邮箱
+curl -X DELETE http://localhost:8080/api/mailboxes/1 \
+  -b cookies.txt
+```
+
+**邮件操作**
+```bash
+# 获取邮件列表
+curl -X GET "http://localhost:8080/api/emails?mailbox=test@example.com&type=inbox&page=1&limit=20" \
+  -b cookies.txt
+
+# 发送邮件 (无附件)
 curl -X POST http://localhost:8080/api/emails/send \
   -b cookies.txt \
   -F "from=sender@example.com" \
@@ -502,10 +1493,523 @@ curl -X POST http://localhost:8080/api/emails/send \
   -F "subject=测试邮件" \
   -F "content=这是一封测试邮件"
 
+# 发送邮件 (带附件)
+curl -X POST http://localhost:8080/api/emails/send \
+  -b cookies.txt \
+  -F "from=sender@example.com" \
+  -F "to=recipient@example.com" \
+  -F "subject=带附件的邮件" \
+  -F "content=这是一封带附件的邮件" \
+  -F "attachments=@/path/to/file.pdf"
+
+# 获取邮件详情
+curl -X GET "http://localhost:8080/api/emails/1?mailbox=test@example.com" \
+  -b cookies.txt
+
+# 删除邮件
+curl -X DELETE http://localhost:8080/api/emails/1 \
+  -b cookies.txt
+```
+
+**管理员操作**
+```bash
+# 获取所有用户
+curl -X GET "http://localhost:8080/api/admin/users?page=1&limit=20" \
+  -b admin_cookies.txt
+
+# 获取域名列表
+curl -X GET http://localhost:8080/api/admin/domains \
+  -b admin_cookies.txt
+
+# 创建域名
+curl -X POST http://localhost:8080/api/admin/domains/simple \
+  -H "Content-Type: application/json" \
+  -b admin_cookies.txt \
+  -d '{
+    "name": "newdomain.com"
+  }'
+
+# 验证域名
+curl -X POST http://localhost:8080/api/admin/domains/1/verify \
+  -b admin_cookies.txt
+
+# 获取系统状态
+curl -X GET http://localhost:8080/api/admin/system/status \
+  -b admin_cookies.txt
+```
+
+10.4 Postman集合
+---------------
+
+**导入Postman集合**
+```json
+{
+  "info": {
+    "name": "思.凡邮箱系统 API",
+    "description": "思.凡邮箱系统完整API接口集合",
+    "version": "2.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "认证",
+      "item": [
+        {
+          "name": "用户登录",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "login"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+**环境变量配置**
+```json
+{
+  "name": "思.凡邮箱-开发环境",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "enabled": true
+    },
+    {
+      "key": "adminUsername",
+      "value": "admin",
+      "enabled": true
+    },
+    {
+      "key": "adminPassword",
+      "value": "tgx123456",
+      "enabled": true
+    },
+    {
+      "key": "testUser",
+      "value": "testuser",
+      "enabled": true
+    },
+    {
+      "key": "testPassword",
+      "value": "password123",
+      "enabled": true
+    }
+  ]
+}
+```
+
+===============================================================================
+11. 测试工具和调试
 ===============================================================================
 
-文档版本: v1.0
-最后更新: 2024年12月
-联系方式: 如有问题请联系开发团队
+11.1 API测试脚本
+---------------
+
+**Python测试脚本** (test_api.py)
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+思.凡邮箱系统 API 测试脚本
+用于自动化测试所有API接口
+"""
+
+import requests
+import json
+import time
+import sys
+from typing import Dict, Any
+
+class APITester:
+    def __init__(self, base_url: str = "http://localhost:8080"):
+        self.base_url = base_url.rstrip('/')
+        self.api_url = f"{self.base_url}/api"
+        self.session = requests.Session()
+        self.test_results = []
+
+    def log(self, message: str, level: str = "INFO"):
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{timestamp}] [{level}] {message}")
+
+    def test_api(self, method: str, endpoint: str, data: Dict = None,
+                 expected_status: int = 200, description: str = "") -> bool:
+        """测试API接口"""
+        url = f"{self.api_url}/{endpoint.lstrip('/')}"
+
+        try:
+            if method.upper() == 'GET':
+                response = self.session.get(url, params=data)
+            elif method.upper() == 'POST':
+                response = self.session.post(url, json=data)
+            elif method.upper() == 'PUT':
+                response = self.session.put(url, json=data)
+            elif method.upper() == 'DELETE':
+                response = self.session.delete(url)
+            else:
+                raise ValueError(f"不支持的HTTP方法: {method}")
+
+            success = response.status_code == expected_status
+            result = {
+                'method': method,
+                'endpoint': endpoint,
+                'description': description,
+                'expected_status': expected_status,
+                'actual_status': response.status_code,
+                'success': success,
+                'response': response.json() if response.content else None
+            }
+
+            self.test_results.append(result)
+
+            status = "✅ PASS" if success else "❌ FAIL"
+            self.log(f"{status} {method} {endpoint} - {description}")
+
+            if not success:
+                self.log(f"期望状态码: {expected_status}, 实际状态码: {response.status_code}", "ERROR")
+                if response.content:
+                    self.log(f"响应内容: {response.text}", "ERROR")
+
+            return success
+
+        except Exception as e:
+            self.log(f"❌ ERROR {method} {endpoint} - {str(e)}", "ERROR")
+            self.test_results.append({
+                'method': method,
+                'endpoint': endpoint,
+                'description': description,
+                'success': False,
+                'error': str(e)
+            })
+            return False
+
+    def run_tests(self):
+        """运行所有测试"""
+        self.log("开始API测试...")
+
+        # 1. 测试公共接口
+        self.log("=== 测试公共接口 ===")
+        self.test_api('GET', '/health', expected_status=200, description="健康检查")
+        self.test_api('GET', '/domains/available', expected_status=200, description="获取可用域名")
+
+        # 2. 测试用户认证
+        self.log("=== 测试用户认证 ===")
+        login_data = {"username": "admin", "password": "tgx123456"}
+        self.test_api('POST', '/admin/login', login_data, 200, "管理员登录")
+
+        # 3. 测试邮箱管理
+        self.log("=== 测试邮箱管理 ===")
+        self.test_api('GET', '/mailboxes', expected_status=200, description="获取邮箱列表")
+
+        # 4. 测试管理员接口
+        self.log("=== 测试管理员接口 ===")
+        self.test_api('GET', '/admin/users', expected_status=200, description="获取用户列表")
+        self.test_api('GET', '/admin/domains', expected_status=200, description="获取域名列表")
+        self.test_api('GET', '/admin/system/status', expected_status=200, description="获取系统状态")
+
+        # 5. 生成测试报告
+        self.generate_report()
+
+    def generate_report(self):
+        """生成测试报告"""
+        total_tests = len(self.test_results)
+        passed_tests = sum(1 for result in self.test_results if result.get('success', False))
+        failed_tests = total_tests - passed_tests
+
+        self.log("=== 测试报告 ===")
+        self.log(f"总测试数: {total_tests}")
+        self.log(f"通过: {passed_tests}")
+        self.log(f"失败: {failed_tests}")
+        self.log(f"成功率: {(passed_tests/total_tests*100):.1f}%")
+
+        if failed_tests > 0:
+            self.log("=== 失败的测试 ===")
+            for result in self.test_results:
+                if not result.get('success', False):
+                    self.log(f"❌ {result['method']} {result['endpoint']} - {result['description']}")
+
+if __name__ == "__main__":
+    tester = APITester()
+    tester.run_tests()
+```
+
+11.2 性能测试
+------------
+
+**Apache Bench (ab) 测试**
+```bash
+#!/bin/bash
+# performance_test.sh
+
+echo "=== 思.凡邮箱系统性能测试 ==="
+
+# 测试登录接口
+echo "测试登录接口性能..."
+ab -n 1000 -c 10 -p login_data.json -T application/json \
+   http://localhost:8080/api/login
+
+# 测试邮箱列表接口
+echo "测试邮箱列表接口性能..."
+ab -n 1000 -c 10 -H "Cookie: session=test_session" \
+   http://localhost:8080/api/mailboxes
+
+# 测试健康检查接口
+echo "测试健康检查接口性能..."
+ab -n 5000 -c 50 http://localhost:8080/api/health
+
+echo "性能测试完成"
+```
+
+**wrk压力测试**
+```bash
+# 安装wrk
+# Ubuntu: sudo apt install wrk
+# macOS: brew install wrk
+
+# 测试Web界面
+wrk -t12 -c400 -d30s http://localhost:8080/
+
+# 测试API接口
+wrk -t12 -c400 -d30s -H "Cookie: session=test" \
+    http://localhost:8080/api/mailboxes
+
+# 测试POST接口
+wrk -t12 -c400 -d30s -s post.lua \
+    http://localhost:8080/api/login
+```
+
+11.3 监控和调试
+--------------
+
+**实时监控脚本**
+```bash
+#!/bin/bash
+# monitor.sh
+
+echo "=== 思.凡邮箱系统监控 ==="
+
+while true; do
+    echo "$(date): 检查系统状态..."
+
+    # 检查进程
+    if pgrep -f "miko-email" > /dev/null; then
+        echo "✅ 服务正在运行"
+    else
+        echo "❌ 服务未运行"
+    fi
+
+    # 检查端口
+    for port in 8080 25 587 143 110; do
+        if netstat -tlnp | grep ":$port " > /dev/null; then
+            echo "✅ 端口 $port 正在监听"
+        else
+            echo "❌ 端口 $port 未监听"
+        fi
+    done
+
+    # 检查API健康状态
+    if curl -s http://localhost:8080/api/health | grep -q "healthy"; then
+        echo "✅ API健康检查通过"
+    else
+        echo "❌ API健康检查失败"
+    fi
+
+    echo "---"
+    sleep 30
+done
+```
+
+**日志分析脚本**
+```bash
+#!/bin/bash
+# log_analysis.sh
+
+LOG_FILE="logs/app.log"
+
+echo "=== 日志分析报告 ==="
+echo "分析文件: $LOG_FILE"
+echo "分析时间: $(date)"
+echo
+
+# 错误统计
+echo "=== 错误统计 ==="
+grep "ERROR" $LOG_FILE | wc -l | xargs echo "错误总数:"
+grep "ERROR" $LOG_FILE | tail -5 | while read line; do
+    echo "  $line"
+done
+echo
+
+# 访问统计
+echo "=== 访问统计 ==="
+grep "GET\|POST\|PUT\|DELETE" $LOG_FILE | wc -l | xargs echo "请求总数:"
+grep "POST /api/login" $LOG_FILE | wc -l | xargs echo "登录次数:"
+grep "POST /api/mailboxes" $LOG_FILE | wc -l | xargs echo "创建邮箱次数:"
+echo
+
+# IP统计
+echo "=== IP访问统计 (Top 10) ==="
+grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" $LOG_FILE | \
+    sort | uniq -c | sort -nr | head -10
+```
+
+===============================================================================
+12. 错误码参考
+===============================================================================
+
+12.1 通用错误码
+--------------
+- `SUCCESS` (0): 操作成功
+- `INVALID_REQUEST` (400): 请求参数错误
+- `UNAUTHORIZED` (401): 未认证
+- `FORBIDDEN` (403): 权限不足
+- `NOT_FOUND` (404): 资源不存在
+- `CONFLICT` (409): 资源冲突
+- `VALIDATION_ERROR` (422): 数据验证失败
+- `RATE_LIMITED` (429): 请求频率超限
+- `INTERNAL_ERROR` (500): 服务器内部错误
+
+12.2 业务错误码
+--------------
+
+**用户相关 (1000-1999)**
+- `USER_NOT_FOUND` (1001): 用户不存在
+- `USER_ALREADY_EXISTS` (1002): 用户已存在
+- `INVALID_CREDENTIALS` (1003): 用户名或密码错误
+- `USER_INACTIVE` (1004): 用户已被禁用
+- `PASSWORD_TOO_WEAK` (1005): 密码强度不足
+
+**邮箱相关 (2000-2999)**
+- `MAILBOX_NOT_FOUND` (2001): 邮箱不存在
+- `MAILBOX_ALREADY_EXISTS` (2002): 邮箱已存在
+- `MAILBOX_QUOTA_EXCEEDED` (2003): 邮箱配额超限
+- `MAILBOX_LIMIT_REACHED` (2004): 邮箱数量达到上限
+- `INVALID_MAILBOX_PREFIX` (2005): 邮箱前缀格式错误
+
+**域名相关 (3000-3999)**
+- `DOMAIN_NOT_FOUND` (3001): 域名不存在
+- `DOMAIN_ALREADY_EXISTS` (3002): 域名已存在
+- `DOMAIN_NOT_VERIFIED` (3003): 域名未验证
+- `DNS_VERIFICATION_FAILED` (3004): DNS验证失败
+- `INVALID_DOMAIN_FORMAT` (3005): 域名格式错误
+
+**邮件相关 (4000-4999)**
+- `EMAIL_NOT_FOUND` (4001): 邮件不存在
+- `EMAIL_SIZE_TOO_LARGE` (4002): 邮件大小超限
+- `ATTACHMENT_TOO_LARGE` (4003): 附件大小超限
+- `INVALID_EMAIL_FORMAT` (4004): 邮件格式错误
+- `SEND_QUOTA_EXCEEDED` (4005): 发送配额超限
+
+===============================================================================
+13. 版本更新日志
+===============================================================================
+
+**v2.0.0** (2025-08-08)
+- 🎉 全新的API v2版本
+- ✨ 新增实时监控接口
+- ✨ 新增批量操作功能
+- ✨ 新增WebSocket支持
+- 🔧 优化数据库性能
+- 🔧 改进错误处理机制
+- 📚 完善API文档
+- 🐛 修复已知安全问题
+
+**v1.2.0** (2025-06-01)
+- ✨ 新增邮件转发功能
+- ✨ 新增DKIM签名支持
+- 🔧 优化邮件存储机制
+- 📱 改进移动端适配
+
+**v1.1.0** (2025-04-01)
+- ✨ 新增管理员面板
+- ✨ 新增用户权限管理
+- 🔧 优化SMTP性能
+- 🐛 修复邮件编码问题
+
+**v1.0.0** (2025-01-01)
+- 🎉 首个正式版本发布
+- ✨ 完整的邮箱管理功能
+- ✨ 支持SMTP/IMAP/POP3协议
+- ✨ Web管理界面
+
+===============================================================================
+14. 技术支持
+===============================================================================
+
+📞 **联系方式**
+- QQ: 2014131458
+- 邮箱: 2014131458@qq.com
+- 微信: [请通过QQ联系获取]
+
+🌐 **在线资源**
+- 项目地址: https://github.com/your-repo/miko-email
+- 在线文档: https://docs.miko-email.com
+- 问题反馈: https://github.com/your-repo/miko-email/issues
+- 讨论社区: https://github.com/your-repo/miko-email/discussions
+
+⏰ **支持时间**
+- 工作日: 9:00-18:00 (UTC+8)
+- 紧急问题: 24小时内响应
+- 一般问题: 48小时内响应
+
+🆘 **获取帮助**
+1. 查看本文档和故障排除指南
+2. 搜索已有的GitHub Issues
+3. 在社区讨论区提问
+4. 联系技术支持
+
+💡 **贡献代码**
+欢迎提交Pull Request和Issue，让我们一起完善这个项目！
+
+===============================================================================
+
+📋 **文档信息**
+- 文档版本: v2.0.0
+- 系统版本: v2.0.0
+- 最后更新: 2025-08-08
+- 维护团队: 思.凡开发团队
+- 文档语言: 中文 (简体)
+
+🔄 **更新频率**
+- 主要版本: 每季度更新
+- 次要版本: 每月更新
+- 补丁版本: 根据需要更新
+- 文档更新: 跟随版本发布
 
 ===============================================================================

@@ -23,4 +23,1115 @@
 
 ===============================================================================
 1. 常见启动问题
-后面完善
+===============================================================================
+
+1.1 端口占用问题
+--------------
+**问题现象**: 启动时提示 "bind: address already in use"
+
+**解决方案**:
+```bash
+# Windows查看端口占用
+netstat -ano | findstr :8080
+netstat -ano | findstr :25
+
+# Linux/macOS查看端口占用
+lsof -i :8080
+netstat -tlnp | grep 8080
+
+# 杀死占用进程
+# Windows
+taskkill /PID <进程ID> /F
+
+# Linux/macOS
+kill -9 <进程ID>
+```
+
+**预防措施**:
+- 修改config.yaml中的端口配置
+- 使用不同的端口号
+- 检查其他邮件服务是否在运行
+
+1.2 权限问题
+-----------
+**问题现象**: Linux下无法绑定25端口，提示权限不足
+
+**解决方案**:
+```bash
+# 方法1: 使用sudo运行
+sudo ./miko-email
+
+# 方法2: 设置capabilities (推荐)
+sudo setcap 'cap_net_bind_service=+ep' ./miko-email
+
+# 方法3: 使用非特权端口
+# 修改config.yaml，将SMTP端口改为2525
+```
+
+1.3 数据库初始化失败
+------------------
+**问题现象**:
+- "database disk image is malformed"
+- "unable to open database file"
+- "database is locked"
+
+**解决方案**:
+```bash
+# 检查数据库文件权限
+ls -la miko_email.db
+
+# 修复权限
+chmod 644 miko_email.db
+
+# 检查数据库完整性
+sqlite3 miko_email.db "PRAGMA integrity_check;"
+
+# 如果数据库损坏，重新初始化
+rm miko_email.db
+go run main.go  # 会自动创建新数据库
+
+# 备份和恢复数据库
+cp miko_email.db miko_email.db.backup
+sqlite3 miko_email.db ".backup backup.db"
+```
+
+1.4 Go模块下载失败
+-----------------
+**问题现象**:
+- "go: module not found"
+- "connection timeout"
+- "checksum mismatch"
+
+**解决方案**:
+```bash
+# 设置Go代理
+go env -w GOPROXY=https://goproxy.cn,direct
+go env -w GOSUMDB=sum.golang.google.cn
+
+# 清理模块缓存
+go clean -modcache
+
+# 重新下载依赖
+go mod download
+go mod tidy
+
+# 验证模块
+go mod verify
+```
+
+1.5 配置文件问题
+---------------
+**问题现象**:
+- "config file not found"
+- "invalid yaml format"
+- "missing required config"
+
+**解决方案**:
+```bash
+# 检查配置文件是否存在
+ls -la config.yaml
+
+# 验证YAML格式
+python -c "import yaml; yaml.safe_load(open('config.yaml'))"
+
+# 使用默认配置
+cp config.yaml.example config.yaml
+
+# 检查配置项
+grep -n "database:" config.yaml
+grep -n "server:" config.yaml
+```
+
+===============================================================================
+2. 网络连接问题
+===============================================================================
+
+2.1 SMTP连接问题
+---------------
+**问题现象**:
+- "connection refused"
+- "connection timeout"
+- "authentication failed"
+
+**诊断步骤**:
+```bash
+# 1. 检查端口监听
+netstat -tlnp | grep -E ':(25|587|465)'
+
+# 2. 测试端口连接
+telnet localhost 25
+telnet localhost 587
+
+# 3. 检查防火墙
+# Windows
+netsh advfirewall firewall show rule name="SMTP"
+
+# Linux
+sudo iptables -L | grep -E '(25|587|465)'
+sudo firewall-cmd --list-ports
+```
+
+**解决方案**:
+```bash
+# 开放防火墙端口
+# Windows
+netsh advfirewall firewall add rule name="SMTP" dir=in action=allow protocol=TCP localport=25
+netsh advfirewall firewall add rule name="SMTP-587" dir=in action=allow protocol=TCP localport=587
+
+# Linux (iptables)
+sudo iptables -A INPUT -p tcp --dport 25 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 587 -j ACCEPT
+
+# Linux (firewalld)
+sudo firewall-cmd --permanent --add-port=25/tcp
+sudo firewall-cmd --permanent --add-port=587/tcp
+sudo firewall-cmd --reload
+```
+
+2.2 IMAP/POP3连接问题
+-------------------
+**问题现象**: 邮件客户端无法连接
+
+**诊断步骤**:
+```bash
+# 测试IMAP连接
+telnet localhost 143
+# 输入: a1 LOGIN username password
+
+# 测试POP3连接
+telnet localhost 110
+# 输入: USER username
+# 输入: PASS password
+```
+
+**解决方案**:
+- 检查端口配置
+- 验证用户名密码
+- 检查邮箱状态
+- 查看服务器日志
+
+2.3 Web界面访问问题
+------------------
+**问题现象**:
+- 页面无法加载
+- 静态资源404
+- API请求失败
+
+**解决方案**:
+```bash
+# 检查Web服务端口
+curl -I http://localhost:8080
+
+# 检查静态资源路径
+ls -la web/static/
+
+# 检查模板文件
+ls -la web/templates/
+
+# 查看访问日志
+tail -f logs/access.log
+```
+
+===============================================================================
+3. 数据库问题
+===============================================================================
+
+3.1 数据库损坏
+-------------
+**问题现象**:
+- "database disk image is malformed"
+- "database corruption"
+- 查询返回异常结果
+
+**诊断步骤**:
+```bash
+# 检查数据库完整性
+sqlite3 miko_email.db "PRAGMA integrity_check;"
+
+# 检查数据库统计
+sqlite3 miko_email.db "PRAGMA stats;"
+
+# 查看数据库信息
+sqlite3 miko_email.db ".dbinfo"
+```
+
+**修复方案**:
+```bash
+# 方法1: 导出重建
+sqlite3 miko_email.db ".dump" > backup.sql
+rm miko_email.db
+sqlite3 miko_email.db < backup.sql
+
+# 方法2: 使用VACUUM
+sqlite3 miko_email.db "VACUUM;"
+
+# 方法3: 重建索引
+sqlite3 miko_email.db "REINDEX;"
+```
+
+3.2 数据库锁定
+-------------
+**问题现象**: "database is locked"
+
+**解决方案**:
+```bash
+# 查找锁定进程
+lsof miko_email.db
+
+# 强制解锁 (谨慎使用)
+fuser -k miko_email.db
+
+# 检查WAL文件
+ls -la miko_email.db*
+
+# 清理WAL文件
+sqlite3 miko_email.db "PRAGMA wal_checkpoint(FULL);"
+```
+
+3.3 性能问题
+-----------
+**问题现象**: 查询速度慢，响应时间长
+
+**优化方案**:
+```sql
+-- 分析查询计划
+EXPLAIN QUERY PLAN SELECT * FROM emails WHERE mailbox_id = 1;
+
+-- 添加缺失索引
+CREATE INDEX idx_emails_mailbox_type ON emails(mailbox_id, email_type);
+
+-- 优化查询语句
+-- 避免SELECT *，只查询需要的字段
+SELECT id, subject, from_address, received_at
+FROM emails
+WHERE mailbox_id = ? AND email_type = 'inbox'
+ORDER BY received_at DESC
+LIMIT 20;
+
+-- 使用VACUUM优化数据库
+VACUUM;
+
+-- 更新统计信息
+ANALYZE;
+```
+
+3.4 数据迁移问题
+---------------
+**问题现象**: 版本升级后数据结构不兼容
+
+**解决方案**:
+```go
+// 数据库迁移脚本
+func MigrateDatabase(db *sql.DB) error {
+    migrations := []string{
+        // v1.0 -> v1.1: 添加DKIM字段
+        `ALTER TABLE domains ADD COLUMN dkim_record TEXT;`,
+
+        // v1.1 -> v1.2: 添加邮件附件表
+        `CREATE TABLE IF NOT EXISTS email_attachments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email_id INTEGER NOT NULL,
+            filename TEXT NOT NULL,
+            content_type TEXT,
+            size INTEGER NOT NULL,
+            file_path TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE
+        );`,
+
+        // v1.2 -> v1.3: 添加转发统计
+        `ALTER TABLE email_forwards ADD COLUMN forward_count INTEGER DEFAULT 0;`,
+    }
+
+    for i, migration := range migrations {
+        if _, err := db.Exec(migration); err != nil {
+            return fmt.Errorf("migration %d failed: %v", i+1, err)
+        }
+    }
+
+    return nil
+}
+```
+
+===============================================================================
+4. 邮件协议问题
+===============================================================================
+
+4.1 SMTP发送问题
+---------------
+**问题现象**:
+- 邮件发送失败
+- 认证错误
+- 连接超时
+
+**诊断步骤**:
+```bash
+# 手动测试SMTP
+telnet localhost 25
+HELO test.com
+MAIL FROM: test@example.com
+RCPT TO: user@domain.com
+DATA
+Subject: Test
+
+Test message.
+.
+QUIT
+```
+
+**常见错误及解决**:
+```
+错误: "550 5.7.1 Relay access denied"
+解决: 检查发件人域名是否在允许列表中
+
+错误: "535 5.7.8 Authentication failed"
+解决: 检查用户名密码，确认邮箱状态
+
+错误: "552 5.3.4 Message size exceeds maximum"
+解决: 检查邮件大小限制配置
+
+错误: "421 4.3.2 Service not available"
+解决: 检查服务器负载和连接数限制
+```
+
+4.2 IMAP接收问题
+---------------
+**问题现象**: 邮件客户端无法收取邮件
+
+**诊断步骤**:
+```bash
+# 手动测试IMAP
+telnet localhost 143
+a1 LOGIN username password
+a2 LIST "" "*"
+a3 SELECT INBOX
+a4 FETCH 1 BODY[]
+a5 LOGOUT
+```
+
+**解决方案**:
+- 检查邮箱密码
+- 验证邮箱状态
+- 查看邮件数量
+- 检查权限设置
+
+4.3 POP3下载问题
+---------------
+**问题现象**: 邮件下载失败或不完整
+
+**诊断步骤**:
+```bash
+# 手动测试POP3
+telnet localhost 110
+USER username
+PASS password
+STAT
+LIST
+RETR 1
+QUIT
+```
+
+**解决方案**:
+- 检查邮件格式
+- 验证附件处理
+- 查看存储空间
+- 检查网络稳定性
+
+===============================================================================
+5. Web界面问题
+===============================================================================
+
+5.1 页面加载问题
+---------------
+**问题现象**:
+- 页面空白
+- 样式错乱
+- JavaScript错误
+
+**诊断步骤**:
+1. 打开浏览器开发者工具 (F12)
+2. 查看Console错误信息
+3. 检查Network请求状态
+4. 验证静态资源路径
+
+**解决方案**:
+```bash
+# 检查静态资源
+ls -la web/static/css/
+ls -la web/static/js/
+
+# 检查模板文件
+ls -la web/templates/
+
+# 验证文件权限
+chmod -R 644 web/static/
+chmod -R 644 web/templates/
+```
+
+5.2 登录问题
+-----------
+**问题现象**:
+- 登录失败
+- 会话过期
+- 权限不足
+
+**解决方案**:
+```bash
+# 检查管理员账号
+sqlite3 miko_email.db "SELECT * FROM admins;"
+
+# 重置管理员密码
+sqlite3 miko_email.db "UPDATE admins SET password_hash = '<new_hash>' WHERE username = 'admin';"
+
+# 检查会话配置
+grep -n "session" config.yaml
+```
+
+5.3 API请求问题
+--------------
+**问题现象**:
+- 请求超时
+- 响应格式错误
+- 跨域问题
+
+**解决方案**:
+```javascript
+// 检查API响应
+fetch('/api/mailboxes')
+  .then(response => {
+    console.log('Status:', response.status);
+    console.log('Headers:', response.headers);
+    return response.json();
+  })
+  .then(data => console.log('Data:', data))
+  .catch(error => console.error('Error:', error));
+
+// 检查跨域配置
+// 在浏览器控制台查看CORS错误
+```
+
+===============================================================================
+6. 性能问题
+===============================================================================
+
+6.1 响应速度慢
+-------------
+**问题现象**: 页面加载慢，API响应时间长
+
+**诊断步骤**:
+```bash
+# 检查系统资源
+top
+htop
+free -h
+df -h
+
+# 检查数据库性能
+sqlite3 miko_email.db "PRAGMA stats;"
+
+# 分析慢查询
+# 在代码中添加查询时间日志
+```
+
+**优化方案**:
+```sql
+-- 添加数据库索引
+CREATE INDEX idx_emails_mailbox_received ON emails(mailbox_id, received_at);
+CREATE INDEX idx_emails_type_read ON emails(email_type, is_read);
+
+-- 优化查询语句
+-- 使用LIMIT限制结果数量
+SELECT * FROM emails WHERE mailbox_id = ? ORDER BY received_at DESC LIMIT 20;
+
+-- 使用分页查询
+SELECT * FROM emails WHERE mailbox_id = ? ORDER BY received_at DESC LIMIT 20 OFFSET ?;
+```
+
+6.2 内存使用过高
+---------------
+**问题现象**: 内存占用持续增长
+
+**诊断方案**:
+```bash
+# 查看内存使用
+ps aux | grep miko-email
+
+# Go内存分析
+go tool pprof http://localhost:6060/debug/pprof/heap
+
+# 查看goroutine
+go tool pprof http://localhost:6060/debug/pprof/goroutine
+```
+
+**优化方案**:
+```go
+// 及时关闭资源
+defer rows.Close()
+defer file.Close()
+
+// 使用对象池
+var emailPool = sync.Pool{
+    New: func() interface{} {
+        return &models.Email{}
+    },
+}
+
+// 控制goroutine数量
+semaphore := make(chan struct{}, 100) // 最多100个并发
+```
+
+6.3 磁盘空间问题
+---------------
+**问题现象**: 磁盘空间不足，邮件存储失败
+
+**解决方案**:
+```bash
+# 检查磁盘使用
+df -h
+
+# 清理日志文件
+find logs/ -name "*.log" -mtime +30 -delete
+
+# 清理临时文件
+rm -rf /tmp/miko-email-*
+
+# 压缩旧邮件
+sqlite3 miko_email.db "DELETE FROM emails WHERE received_at < date('now', '-1 year');"
+
+# 数据库VACUUM
+sqlite3 miko_email.db "VACUUM;"
+```
+
+===============================================================================
+7. 安全问题
+===============================================================================
+
+7.1 认证安全
+-----------
+**问题现象**:
+- 暴力破解攻击
+- 会话劫持
+- 权限绕过
+
+**防护措施**:
+```go
+// 登录失败次数限制
+type LoginAttempt struct {
+    IP        string
+    Count     int
+    LastTry   time.Time
+    Blocked   bool
+}
+
+var loginAttempts = make(map[string]*LoginAttempt)
+
+func checkLoginAttempt(ip string) bool {
+    attempt, exists := loginAttempts[ip]
+    if !exists {
+        loginAttempts[ip] = &LoginAttempt{
+            IP:      ip,
+            Count:   0,
+            LastTry: time.Now(),
+        }
+        return true
+    }
+
+    // 检查是否被阻止
+    if attempt.Blocked && time.Since(attempt.LastTry) < 15*time.Minute {
+        return false
+    }
+
+    // 重置计数器
+    if time.Since(attempt.LastTry) > 5*time.Minute {
+        attempt.Count = 0
+        attempt.Blocked = false
+    }
+
+    return true
+}
+```
+
+7.2 数据安全
+-----------
+**问题现象**:
+- 数据泄露
+- SQL注入
+- XSS攻击
+
+**防护措施**:
+```go
+// SQL注入防护 - 使用参数化查询
+func (r *UserRepository) GetByUsername(username string) (*models.User, error) {
+    // 正确方式
+    row := r.db.QueryRow("SELECT * FROM users WHERE username = ?", username)
+
+    // 错误方式 - 容易SQL注入
+    // row := r.db.QueryRow(fmt.Sprintf("SELECT * FROM users WHERE username = '%s'", username))
+}
+
+// XSS防护 - 输出转义
+import "html/template"
+
+func renderTemplate(w http.ResponseWriter, tmpl string, data interface{}) {
+    t := template.Must(template.ParseFiles(tmpl))
+    t.Execute(w, data) // 自动转义HTML
+}
+```
+
+7.3 网络安全
+-----------
+**问题现象**:
+- DDoS攻击
+- 端口扫描
+- 恶意请求
+
+**防护措施**:
+```go
+// 限流中间件
+func RateLimitMiddleware() gin.HandlerFunc {
+    limiter := rate.NewLimiter(rate.Every(time.Minute), 60) // 每分钟60次
+
+    return func(c *gin.Context) {
+        if !limiter.Allow() {
+            c.JSON(http.StatusTooManyRequests, gin.H{
+                "success": false,
+                "message": "请求过于频繁，请稍后重试",
+            })
+            c.Abort()
+            return
+        }
+        c.Next()
+    }
+}
+
+// IP白名单中间件
+func IPWhitelistMiddleware(allowedIPs []string) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        clientIP := c.ClientIP()
+
+        allowed := false
+        for _, ip := range allowedIPs {
+            if clientIP == ip || strings.HasPrefix(clientIP, ip) {
+                allowed = true
+                break
+            }
+        }
+
+        if !allowed {
+            c.JSON(http.StatusForbidden, gin.H{
+                "success": false,
+                "message": "访问被拒绝",
+            })
+            c.Abort()
+            return
+        }
+
+        c.Next()
+    }
+}
+```
+
+===============================================================================
+8. 配置问题
+===============================================================================
+
+8.1 邮件配置问题
+---------------
+**问题现象**:
+- 邮件发送失败
+- DNS解析错误
+- DKIM验证失败
+
+**解决方案**:
+```yaml
+# 检查邮件配置
+email:
+  max_size: 25                    # 邮件大小限制(MB)
+  max_mailboxes_per_user: 10      # 每用户最大邮箱数
+  retention_days: 0               # 邮件保留天数(0=永久)
+  enable_forwarding: true         # 启用转发功能
+
+# 检查SMTP发送配置
+smtp_sender:
+  host: smtp.163.com              # SMTP服务器
+  port: 465                       # SMTP端口
+  username: your-email@163.com    # 发送账号
+  password: your-password         # 发送密码
+  secure: ssl                     # 加密方式
+  from_name: "思.凡邮箱系统"       # 发件人名称
+```
+
+8.2 域名配置问题
+---------------
+**问题现象**:
+- 域名验证失败
+- DNS记录错误
+- 邮件投递失败
+
+**解决方案**:
+```bash
+# 检查DNS记录
+nslookup -type=MX yourdomain.com
+nslookup -type=A yourdomain.com
+nslookup -type=TXT yourdomain.com
+
+# 验证SPF记录
+dig TXT yourdomain.com | grep "v=spf1"
+
+# 验证DKIM记录
+dig TXT default._domainkey.yourdomain.com
+
+# 验证DMARC记录
+dig TXT _dmarc.yourdomain.com
+```
+
+**正确的DNS配置示例**:
+```
+# A记录
+yourdomain.com.     IN  A       192.168.1.100
+
+# MX记录
+yourdomain.com.     IN  MX  10  mail.yourdomain.com.
+
+# SPF记录
+yourdomain.com.     IN  TXT     "v=spf1 ip4:192.168.1.100 ~all"
+
+# DKIM记录
+default._domainkey.yourdomain.com. IN TXT "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC..."
+
+# DMARC记录
+_dmarc.yourdomain.com. IN TXT "v=DMARC1; p=quarantine; rua=mailto:dmarc@yourdomain.com"
+```
+
+8.3 SSL/TLS配置问题
+------------------
+**问题现象**:
+- SSL证书验证失败
+- 加密连接建立失败
+- 证书过期
+
+**解决方案**:
+```bash
+# 生成自签名证书 (测试用)
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
+
+# 检查证书信息
+openssl x509 -in cert.pem -text -noout
+
+# 验证证书有效性
+openssl verify cert.pem
+
+# 测试SSL连接
+openssl s_client -connect localhost:465 -servername yourdomain.com
+```
+
+===============================================================================
+9. 日志分析
+===============================================================================
+
+9.1 日志配置
+-----------
+```yaml
+logging:
+  level: info                     # 日志级别: debug/info/warn/error
+  to_file: true                   # 是否输出到文件
+  file_path: ./logs/app.log       # 日志文件路径
+  access_log: true                # 是否记录访问日志
+  max_size: 100                   # 日志文件最大大小(MB)
+  max_backups: 10                 # 保留的日志文件数量
+  max_age: 30                     # 日志文件保留天数
+```
+
+9.2 日志分析技巧
+---------------
+```bash
+# 查看实时日志
+tail -f logs/app.log
+
+# 过滤错误日志
+grep "ERROR" logs/app.log
+
+# 统计错误类型
+grep "ERROR" logs/app.log | awk '{print $4}' | sort | uniq -c
+
+# 分析访问日志
+awk '{print $1}' logs/access.log | sort | uniq -c | sort -nr | head -10
+
+# 查找特定时间段的日志
+sed -n '/2024-01-01 10:00/,/2024-01-01 11:00/p' logs/app.log
+```
+
+9.3 常见日志错误
+---------------
+```
+错误: "database disk image is malformed"
+原因: 数据库文件损坏
+解决: 恢复数据库备份或重新初始化
+
+错误: "connection refused"
+原因: 服务未启动或端口被占用
+解决: 检查服务状态和端口配置
+
+错误: "authentication failed"
+原因: 用户名密码错误或账号被禁用
+解决: 验证账号信息和状态
+
+错误: "file not found"
+原因: 静态资源或模板文件缺失
+解决: 检查文件路径和权限
+
+错误: "panic: runtime error"
+原因: 程序运行时错误
+解决: 查看详细错误信息，修复代码问题
+```
+
+===============================================================================
+10. 系统监控
+===============================================================================
+
+10.1 监控指标
+------------
+**系统指标**
+- CPU使用率
+- 内存使用率
+- 磁盘使用率
+- 网络流量
+
+**应用指标**
+- 请求响应时间
+- 错误率
+- 并发连接数
+- 邮件处理量
+
+**业务指标**
+- 用户注册数
+- 邮箱创建数
+- 邮件发送量
+- 活跃用户数
+
+10.2 监控工具
+------------
+**系统监控**
+```bash
+# 系统资源监控
+htop
+iotop
+nethogs
+
+# 进程监控
+ps aux | grep miko-email
+pstree -p $(pgrep miko-email)
+```
+
+**应用监控**
+```go
+// 添加监控端点
+func setupMonitoring(router *gin.Engine) {
+    router.GET("/health", func(c *gin.Context) {
+        c.JSON(http.StatusOK, gin.H{
+            "status":    "healthy",
+            "timestamp": time.Now(),
+            "version":   "v1.0.0",
+        })
+    })
+
+    router.GET("/metrics", func(c *gin.Context) {
+        c.JSON(http.StatusOK, gin.H{
+            "uptime":      time.Since(startTime).Seconds(),
+            "requests":    requestCount,
+            "errors":      errorCount,
+            "connections": activeConnections,
+        })
+    })
+}
+```
+
+10.3 告警配置
+------------
+**邮件告警**
+```go
+func sendAlert(level, message string) {
+    if level == "critical" {
+        // 发送紧急告警邮件
+        sendEmail("admin@yourdomain.com", "系统告警", message)
+    }
+
+    // 记录告警日志
+    log.Printf("[ALERT] %s: %s", level, message)
+}
+
+// 监控检查
+func healthCheck() {
+    // 检查数据库连接
+    if err := db.Ping(); err != nil {
+        sendAlert("critical", "数据库连接失败: " + err.Error())
+    }
+
+    // 检查磁盘空间
+    if diskUsage > 90 {
+        sendAlert("warning", fmt.Sprintf("磁盘使用率过高: %d%%", diskUsage))
+    }
+
+    // 检查内存使用
+    if memoryUsage > 80 {
+        sendAlert("warning", fmt.Sprintf("内存使用率过高: %d%%", memoryUsage))
+    }
+}
+```
+
+===============================================================================
+11. 备份和恢复
+===============================================================================
+
+11.1 数据备份
+------------
+**自动备份脚本**
+```bash
+#!/bin/bash
+# backup.sh
+
+BACKUP_DIR="/backup/miko-email"
+DATE=$(date +%Y%m%d_%H%M%S)
+DB_FILE="miko_email.db"
+
+# 创建备份目录
+mkdir -p $BACKUP_DIR
+
+# 备份数据库
+sqlite3 $DB_FILE ".backup $BACKUP_DIR/miko_email_$DATE.db"
+
+# 备份配置文件
+cp config.yaml $BACKUP_DIR/config_$DATE.yaml
+
+# 备份DKIM密钥
+tar -czf $BACKUP_DIR/dkim_keys_$DATE.tar.gz dkim_keys/
+
+# 清理旧备份 (保留30天)
+find $BACKUP_DIR -name "*.db" -mtime +30 -delete
+find $BACKUP_DIR -name "*.yaml" -mtime +30 -delete
+find $BACKUP_DIR -name "*.tar.gz" -mtime +30 -delete
+
+echo "备份完成: $BACKUP_DIR"
+```
+
+**定时备份 (crontab)**
+```bash
+# 每天凌晨2点备份
+0 2 * * * /path/to/backup.sh
+
+# 每小时增量备份
+0 * * * * sqlite3 miko_email.db ".backup /backup/incremental/miko_email_$(date +\%H).db"
+```
+
+11.2 数据恢复
+------------
+**恢复步骤**
+```bash
+# 1. 停止服务
+sudo systemctl stop miko-email
+
+# 2. 备份当前数据
+cp miko_email.db miko_email.db.broken
+
+# 3. 恢复数据库
+cp /backup/miko-email/miko_email_20240101_020000.db miko_email.db
+
+# 4. 恢复配置
+cp /backup/miko-email/config_20240101_020000.yaml config.yaml
+
+# 5. 恢复DKIM密钥
+tar -xzf /backup/miko-email/dkim_keys_20240101_020000.tar.gz
+
+# 6. 检查数据完整性
+sqlite3 miko_email.db "PRAGMA integrity_check;"
+
+# 7. 重启服务
+sudo systemctl start miko-email
+```
+
+===============================================================================
+12. 常用命令
+===============================================================================
+
+12.1 系统管理命令
+---------------
+```bash
+# 查看系统状态
+systemctl status miko-email
+
+# 重启服务
+systemctl restart miko-email
+
+# 查看日志
+journalctl -u miko-email -f
+
+# 检查配置
+./miko-email --check-config
+
+# 数据库维护
+sqlite3 miko_email.db "VACUUM;"
+sqlite3 miko_email.db "ANALYZE;"
+```
+
+12.2 开发调试命令
+---------------
+```bash
+# 编译和运行
+go build -o miko-email main.go
+./miko-email
+
+# 热重载开发
+go install github.com/cosmtrek/air@latest
+air
+
+# 代码检查
+go vet ./...
+golint ./...
+go fmt ./...
+
+# 运行测试
+go test ./...
+go test -v ./internal/services/...
+go test -cover ./...
+```
+
+12.3 数据库管理命令
+-----------------
+```bash
+# 连接数据库
+sqlite3 miko_email.db
+
+# 查看表结构
+.schema users
+.schema domains
+.schema mailboxes
+
+# 查看数据
+SELECT COUNT(*) FROM users;
+SELECT COUNT(*) FROM mailboxes;
+SELECT COUNT(*) FROM emails;
+
+# 清理数据
+DELETE FROM emails WHERE received_at < date('now', '-1 year');
+DELETE FROM email_attachments WHERE email_id NOT IN (SELECT id FROM emails);
+
+# 优化数据库
+VACUUM;
+ANALYZE;
+```
+
+===============================================================================
+紧急联系方式
+===============================================================================
+
+如遇到紧急问题无法解决，请联系:
+
+📞 技术支持: QQ 2014131458
+📧 邮件支持: 2014131458@qq.com
+🌐 项目地址: https://github.com/your-repo/miko-email
+📖 在线文档: https://docs.miko-email.com
+
+⏰ 支持时间: 工作日 9:00-18:00 (UTC+8)
+🚨 紧急问题: 24小时内响应
+
+===============================================================================

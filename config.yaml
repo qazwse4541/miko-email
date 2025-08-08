@@ -37,11 +37,11 @@ email:
     retention_days: 0
     enable_forwarding: true
 smtp_sender:
-    host: smtp.163.com
-    port: 465
-    username: 18090776855@163.com
-    password: JTH39ZMMBTennqeQ
-    secure: ssl
+    host: 127.0.0.1
+    port: 25
+    username: kimi@gmns.top
+    password: 32030b3f
+    secure: none
     from_name: YouDDNS
 logging:
     level: info
