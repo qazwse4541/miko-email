@@ -619,27 +619,29 @@ func (session *SMTPSession) handleStartTLS() {
 
 // IMAPSession IMAP会话
 type IMAPSession struct {
-	conn     net.Conn
-	reader   *bufio.Reader
-	writer   *bufio.Writer
-	server   *Service
-	state    string // NOTAUTHENTICATED, AUTHENTICATED, SELECTED
-	user     string
-	mailbox  string
-	tag      string
+	conn        net.Conn
+	reader      *bufio.Reader
+	writer      *bufio.Writer
+	server      *Service
+	state       string // NOTAUTHENTICATED, AUTHENTICATED, SELECTED
+	user        string
+	mailbox     string
+	tag         string
+	deletedUIDs map[int]bool // 会话内标记为删除的UID
 }
 
 // POP3Session POP3会话
 type POP3Session struct {
-	conn      net.Conn
-	reader    *bufio.Reader
-	writer    *bufio.Writer
-	server    *Service
-	state     string // AUTHORIZATION, TRANSACTION, UPDATE
-	user      string
-	mailboxID int
-	emails    []POP3Email
-	deleted   map[int]bool
+	conn        net.Conn
+	reader      *bufio.Reader
+	writer      *bufio.Writer
+	server      *Service
+	state       string // AUTHORIZATION, TRANSACTION, UPDATE
+	user        string
+	mailboxID   int
+	emails      []POP3Email
+	deleted     map[int]bool
+	tlsEnabled  bool // 是否已启用TLS（STLS或SSL端口）
 }
 
 // POP3Email POP3邮件信息
@@ -716,6 +718,10 @@ func (session *IMAPSession) handle() {
 			session.handleList(args)
 		case "LSUB":
 			session.handleLsub(args)
+		case "NAMESPACE":
+			session.handleNamespace()
+		case "STATUS":
+			session.handleStatus(args)
 		case "SELECT":
 			session.handleSelect(args)
 		case "SEARCH":
@@ -724,6 +730,10 @@ func (session *IMAPSession) handle() {
 			session.handleFetch(args)
 		case "UID":
 			session.handleUID(args)
+		case "STORE":
+			session.handleStore(args)
+		case "EXPUNGE":
+			session.handleExpunge()
 		case "IDLE":
 			session.handleIdle()
 		case "CLOSE":
@@ -900,11 +910,108 @@ func (session *IMAPSession) handleLsub(args []string) {
 		session.writeTaggedResponse("NO Not authenticated")
 		return
 	}
-
 	// LSUB返回订阅的邮箱列表，简化实现只返回INBOX
 	session.writeResponse("* LSUB () \"/\" \"INBOX\"")
 	session.writeTaggedResponse("OK LSUB completed")
 }
+
+// handleNamespace 处理NAMESPACE命令
+func (session *IMAPSession) handleNamespace() {
+	// 简化实现：个人命名空间为 ""，分隔符为 "/"
+	session.writeResponse("* NAMESPACE ((\"\" \"/\")) NIL NIL")
+	session.writeTaggedResponse("OK NAMESPACE completed")
+}
+
+// handleStatus 处理STATUS命令
+func (session *IMAPSession) handleStatus(args []string) {
+	if session.state != "AUTHENTICATED" && session.state != "SELECTED" {
+		session.writeTaggedResponse("NO Not authenticated")
+		return
+	}
+	if len(args) < 2 {
+		session.writeTaggedResponse("BAD STATUS requires mailbox name and data items")
+		return
+	}
+	mailbox := strings.Trim(args[0], "\"")
+	// 只支持INBOX
+	if strings.ToUpper(mailbox) != "INBOX" {
+		session.writeTaggedResponse("NO Mailbox does not exist")
+		return
+	}
+	items := strings.ToUpper(strings.Join(args[1:], " "))
+	var exists, recent, unseen int
+	// 统计INBOX
+	err := session.server.db.QueryRow(`
+		SELECT COUNT(*), SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END)
+		FROM emails e JOIN mailboxes m ON e.mailbox_id = m.id
+		WHERE m.email = ? AND e.folder = 'inbox'`, session.user).Scan(&exists, &unseen)
+	if err != nil {
+		exists, unseen = 0, 0
+	}
+	recent = 0 // 简化处理
+	resp := []string{}
+	if strings.Contains(items, "MESSAGES") { resp = append(resp, fmt.Sprintf("MESSAGES %d", exists)) }
+	if strings.Contains(items, "RECENT") { resp = append(resp, fmt.Sprintf("RECENT %d", recent)) }
+	if strings.Contains(items, "UNSEEN") { resp = append(resp, fmt.Sprintf("UNSEEN %d", unseen)) }
+	if len(resp) == 0 { resp = append(resp, fmt.Sprintf("MESSAGES %d", exists)) }
+	session.writeResponse("* STATUS \"INBOX\" (" + strings.Join(resp, " ") + ")")
+	session.writeTaggedResponse("OK STATUS completed")
+}
+
+// handleStore 处理STORE命令（支持 \Seen 与 \Deleted）
+func (session *IMAPSession) handleStore(args []string) {
+	if session.state != "SELECTED" {
+		session.writeTaggedResponse("NO Not selected")
+		return
+	}
+	if len(args) < 3 {
+		session.writeTaggedResponse("BAD STORE requires sequence-set, item name and value")
+		return
+	}
+	seqSet := args[0]
+	item := strings.ToUpper(args[1])
+	value := strings.ToUpper(strings.Join(args[2:], " "))
+	if !strings.Contains(item, "FLAGS") {
+		session.writeTaggedResponse("OK STORE completed")
+		return
+	}
+	// 将序列号转换为具体的邮件ID
+	rows, err := session.server.db.Query(`
+		SELECT e.id FROM emails e JOIN mailboxes m ON e.mailbox_id = m.id
+		WHERE m.email = ? AND e.folder = 'inbox' ORDER BY e.created_at DESC`, session.user)
+	if err != nil { session.writeTaggedResponse("OK STORE completed"); return }
+	defer rows.Close()
+	var ids []int
+	for rows.Next() { var id int; if err := rows.Scan(&id); err == nil { ids = append(ids, id) } }
+	applySeq := func(fn func(id int)) {
+		if seqSet == "*" { if len(ids) >= 1 { fn(ids[1-1]) } } else if strings.Contains(seqSet, ":") {
+			parts := strings.Split(seqSet, ":"); if len(parts)==2 { s,_ := strconv.Atoi(parts[0]); e:=parts[1]; var en int; if e=="*" { en = len(ids) } else { en,_ = strconv.Atoi(e) }; if s>0 && en>0 && s<=en && en<=len(ids) { for i:=s;i<=en;i++ { fn(ids[i-1]) } } }
+		} else { if n,err := strconv.Atoi(seqSet); err==nil && n>=1 && n<=len(ids) { fn(ids[n-1]) } }
+	}
+	if strings.Contains(value, "\\SEEN") {
+		applySeq(func(id int){ _, _ = session.server.db.Exec("UPDATE emails SET is_read = 1, updated_at = ? WHERE id = ?", time.Now(), id) })
+	}
+	if strings.Contains(value, "\\DELETED") {
+		if session.deletedUIDs == nil { session.deletedUIDs = map[int]bool{} }
+		applySeq(func(id int){ session.deletedUIDs[id] = true })
+	}
+	session.writeTaggedResponse("OK STORE completed")
+}
+
+// handleExpunge 处理EXPUNGE命令（基于会话内删除标记）
+func (session *IMAPSession) handleExpunge() {
+	if session.state != "SELECTED" {
+		session.writeTaggedResponse("NO Not selected")
+		return
+	}
+	if len(session.deletedUIDs) == 0 { session.writeTaggedResponse("OK EXPUNGE completed"); return }
+	for uid := range session.deletedUIDs {
+		_, _ = session.server.db.Exec("DELETE FROM emails WHERE id = ?", uid)
+	}
+	session.deletedUIDs = map[int]bool{}
+	session.writeTaggedResponse("OK EXPUNGE completed")
+}
+
 
 // handleNoop 处理NOOP命令 (No Operation)
 func (session *IMAPSession) handleNoop() {
@@ -1583,7 +1690,7 @@ func (session *IMAPSession) fetchMessage(email struct {
 func (session *IMAPSession) buildBodyStructure(body string) string {
 	// 检查内容类型
 	isHTML := session.isHTMLContent(body)
-	
+
 	// 为了兼容QQ Mail等客户端，返回多部分结构
 	if isHTML {
 		// 多部分HTML邮件的BODYSTRUCTURE
@@ -1600,11 +1707,11 @@ func (session *IMAPSession) buildEnvelope(from, to, subject, date string) string
 	if needsMIMEEncoding(subject) {
 		subject = encodeMIMEHeader(subject)
 	}
-	
+
 	// 解析发件人邮箱地址
 	fromName, fromAddr := parseEmailAddress(from)
 	toName, toAddr := parseEmailAddress(to)
-	
+
 	// 构建ENVELOPE格式
 	// (date subject from sender reply-to to cc bcc in-reply-to message-id)
 	return fmt.Sprintf(`("%s" "%s" (("%s" NIL "%s" "%s")) (("%s" NIL "%s" "%s")) NIL (("%s" NIL "%s" "%s")) NIL NIL NIL NIL)`,
@@ -1913,6 +2020,10 @@ func (session *POP3Session) handle() {
 				session.handleUser(args)
 			case "PASS":
 				session.handlePass(args)
+			case "CAPA":
+				session.handleCapa()
+			case "STLS":
+				session.handleStls()
 			case "QUIT":
 				session.handleQuit()
 				return
@@ -1921,6 +2032,8 @@ func (session *POP3Session) handle() {
 			}
 		case "TRANSACTION":
 			switch cmd {
+			case "CAPA":
+				session.handleCapa()
 			case "STAT":
 				session.handleStat()
 			case "LIST":
@@ -2208,6 +2321,38 @@ func (session *POP3Session) handleDele(args []string) {
 	session.deleted[msgNum] = true
 	session.writeResponse("+OK Message deleted")
 }
+// handleCapa 处理CAPA命令，声明POP3能力
+func (session *POP3Session) handleCapa() {
+	capas := []string{"USER", "TOP", "UIDL", "PIPELINING"}
+	if !session.tlsEnabled { capas = append(capas, "STLS") }
+	session.writeResponse("+OK Capability list follows")
+	for _, c := range capas { session.writer.WriteString(c + "\r\n") }
+	session.writer.WriteString(".\r\n")
+	session.writer.Flush()
+}
+
+// handleStls 处理STLS命令，升级到TLS
+func (session *POP3Session) handleStls() {
+	if session.tlsEnabled { session.writeResponse("-ERR TLS already active"); return }
+	// 生成自签名证书
+	cert, err := session.server.generateSelfSignedCert()
+	if err != nil { session.writeResponse("-ERR TLS not available"); return }
+	// 准备TLS配置
+	cfg := config.Load()
+	serverName := cfg.Domain
+	if serverName == "" || serverName == "localhost" { serverName = "mail.local" }
+	tlsConfig := &tls.Config{ Certificates: []tls.Certificate{cert}, ServerName: serverName }
+	// 通知客户端开始TLS
+	session.writeResponse("+OK Begin TLS negotiation")
+	// 升级连接
+	tlsConn := tls.Server(session.conn, tlsConfig)
+	if err := tlsConn.Handshake(); err != nil { log.Printf("POP3 STLS 握手失败: %v", err); return }
+	session.conn = tlsConn
+	session.reader = bufio.NewReader(tlsConn)
+	session.writer = bufio.NewWriter(tlsConn)
+	session.tlsEnabled = true
+}
+
 
 // handleNoop 处理NOOP命令
 func (session *POP3Session) handleNoop() {
@@ -3434,32 +3579,32 @@ func isBase64Content(content string) bool {
 // GetEmails 获取邮件列表
 func (s *Service) GetEmails(mailboxID int, folder string, page, limit int) ([]models.Email, int, error) {
 	offset := (page - 1) * limit
-	
+
 	// 获取总数
 	var total int
 	err := s.db.QueryRow(`
-		SELECT COUNT(*) FROM emails 
+		SELECT COUNT(*) FROM emails
 		WHERE mailbox_id = ? AND folder = ?
 	`, mailboxID, folder).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取邮件列表
 	query := `
 		SELECT id, mailbox_id, from_addr, to_addr, subject, body, is_read, folder, created_at, updated_at
-		FROM emails 
+		FROM emails
 		WHERE mailbox_id = ? AND folder = ?
 		ORDER BY created_at DESC
 		LIMIT ? OFFSET ?
 	`
-	
+
 	rows, err := s.db.Query(query, mailboxID, folder, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer rows.Close()
-	
+
 	var emails []models.Email
 	for rows.Next() {
 		var email models.Email
@@ -3728,10 +3873,10 @@ func stripHTMLTags(html string) string {
 // DeleteEmail 删除邮件
 func (s *Service) DeleteEmail(emailID, mailboxID int) error {
 	_, err := s.db.Exec(`
-		DELETE FROM emails 
+		DELETE FROM emails
 		WHERE id = ? AND mailbox_id = ?
 	`, emailID, mailboxID)
-	
+
 	return err
 }
 
