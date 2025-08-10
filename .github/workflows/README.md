@@ -79,6 +79,7 @@
 2. **依赖缓存**: 使用 GitHub Actions 缓存加速构建
 3. **权限**: Release 创建需要 `GITHUB_TOKEN` 权限
 4. **文件权限**: Unix-like 系统的二进制文件会自动添加执行权限
+5. **Actions 版本**: 使用最新版本的 GitHub Actions（v4/v5）避免弃用警告
 
 ## 故障排除
 

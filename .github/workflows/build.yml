@@ -55,17 +55,54 @@ jobs:
         CGO_ENABLED: 0
       run: |
         echo "Building for ${{ matrix.goos }}/${{ matrix.goarch }}"
-        go build -ldflags="-s -w" -o ${{ matrix.output }} .
-        
+        # 排除工具目录，只构建主程序
+        go build -ldflags="-s -w" -o ${{ matrix.output }} ./main.go
+
         # 验证构建结果
         if [ "${{ matrix.goos }}" = "linux" ]; then
           file ${{ matrix.output }}
           chmod +x ${{ matrix.output }}
         fi
 
+    - name: Create release package
+      run: |
+        # 创建发布目录
+        RELEASE_DIR="miko-email-${{ matrix.goos }}-${{ matrix.goarch }}"
+        mkdir -p "$RELEASE_DIR"
+
+        # 复制二进制文件
+        cp ${{ matrix.output }} "$RELEASE_DIR/"
+
+        # 复制必要的文件和目录
+        cp config.yaml "$RELEASE_DIR/"
+        cp -r web "$RELEASE_DIR/"
+        cp -r tools "$RELEASE_DIR/"
+
+        # 创建必要的目录
+        mkdir -p "$RELEASE_DIR/dkim_keys"
+        mkdir -p "$RELEASE_DIR/logs"
+        mkdir -p "$RELEASE_DIR/data"
+
+        # 复制文档文件
+        cp README.md "$RELEASE_DIR/" 2>/dev/null || echo "README.md not found, skipping"
+        cp "部署指南.txt" "$RELEASE_DIR/" 2>/dev/null || echo "部署指南.txt not found, skipping"
+        cp "开发指南.txt" "$RELEASE_DIR/" 2>/dev/null || echo "开发指南.txt not found, skipping"
+        cp "故障排除.txt" "$RELEASE_DIR/" 2>/dev/null || echo "故障排除.txt not found, skipping"
+
+        # 创建压缩包
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          # Windows 使用 zip
+          zip -r "${RELEASE_DIR}.zip" "$RELEASE_DIR"
+          echo "PACKAGE_FILE=${RELEASE_DIR}.zip" >> $GITHUB_ENV
+        else
+          # Linux/macOS 使用 tar.gz
+          tar -czf "${RELEASE_DIR}.tar.gz" "$RELEASE_DIR"
+          echo "PACKAGE_FILE=${RELEASE_DIR}.tar.gz" >> $GITHUB_ENV
+        fi
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: mikomail-${{ matrix.goos }}-${{ matrix.goarch }}
-        path: ${{ matrix.output }}
+        name: miko-email-${{ matrix.goos }}-${{ matrix.goarch }}
+        path: ${{ env.PACKAGE_FILE }}
         retention-days: 7
