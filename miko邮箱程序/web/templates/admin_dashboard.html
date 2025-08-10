@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员仪表板 - {{.site_name}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-radius: 0 20px 20px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .sidebar .nav-link {
+            color: #667eea !important;
+            border-radius: 12px;
+            margin: 0.25rem 0;
+            transition: all 0.3s ease;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background: linear-gradient(45deg, #667eea, #764ba2) !important;
+            color: white !important;
+            transform: translateX(5px);
+        }
+        .main-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px 0 0 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .border-left-primary {
+            border-left: 4px solid #667eea !important;
+        }
+        .border-left-success {
+            border-left: 4px solid #28a745 !important;
+        }
+        .border-left-info {
+            border-left: 4px solid #17a2b8 !important;
+        }
+        .border-left-warning {
+            border-left: 4px solid #ffc107 !important;
+        }
+        .btn {
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+        }
+        .table {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .badge {
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row min-vh-100">
+        <!-- 侧边栏 -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="d-flex flex-column h-100 p-3 text-dark">
+                <a href="/admin/dashboard" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none">
+                    {{if .site_logo}}
+                        <img src="{{.site_logo}}" alt="{{.site_name}}" style="height: 32px; margin-right: 8px;">
+                    {{else}}
+                        <i class="bi bi-shield-check me-2 text-primary"></i>
+                    {{end}}
+                    <span class="fs-4 fw-bold text-primary">{{.site_name}}管理</span>
+                </a>
+                <hr>
+                <ul class="nav nav-pills flex-column mb-auto">
+                    <li class="nav-item">
+                        <a href="/admin/dashboard" class="nav-link active">
+                            <i class="bi bi-speedometer2 me-2"></i>
+                            仪表板
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/users" class="nav-link">
+                            <i class="bi bi-people me-2"></i>
+                            用户管理
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/mailboxes" class="nav-link">
+                            <i class="bi bi-envelope me-2"></i>
+                            邮箱管理
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/domains" class="nav-link">
+                            <i class="bi bi-globe me-2"></i>
+                            域名管理
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/system-settings" class="nav-link">
+                            <i class="bi bi-gear me-2"></i>
+                            系统设置
+                        </a>
+                    </li>
+                </ul>
+                <hr>
+                <div class="dropdown">
+                    <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle text-primary" id="dropdownUser1" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle me-2"></i>
+                        <strong>管理员</strong>
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li><a class="dropdown-item" href="#" onclick="logout()">退出登录</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="container-fluid p-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2 text-primary fw-bold">管理员仪表板</h1>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="row mb-4">
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                            总用户数</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalUsers">-</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-people fa-2x text-primary" style="font-size: 2rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-success shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                            总域名数</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalDomains">-</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-globe fa-2x text-success" style="font-size: 2rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-info shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                            已验证域名</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="verifiedDomains">-</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-check-circle fa-2x text-info" style="font-size: 2rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-warning shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                            系统状态</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">正常</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-activity fa-2x text-warning" style="font-size: 2rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 快速操作 -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card shadow">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">快速操作</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <a href="/admin/domains" class="btn btn-primary btn-lg w-100">
+                                            <i class="bi bi-globe me-2"></i>
+                                            管理域名
+                                        </a>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <a href="/admin/users" class="btn btn-success btn-lg w-100">
+                                            <i class="bi bi-people me-2"></i>
+                                            管理用户
+                                        </a>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <button class="btn btn-info btn-lg w-100" onclick="refreshStats()">
+                                            <i class="bi bi-arrow-clockwise me-2"></i>
+                                            刷新统计
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 最近活动 -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card shadow">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">系统信息</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>系统版本</strong></td>
+                                                <td>{{.site_name}} v1.0</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>运行状态</strong></td>
+                                                <td><span class="badge bg-success">正常运行</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>SMTP服务</strong></td>
+                                                <td><span class="badge bg-success">端口 25 - 运行中</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>IMAP服务</strong></td>
+                                                <td><span class="badge bg-success">端口 143 - 运行中</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>POP3服务</strong></td>
+                                                <td><span class="badge bg-success">端口 110 - 运行中</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Web服务</strong></td>
+                                                <td><span class="badge bg-success">端口 8080 - 运行中</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+// 配置axios默认设置
+axios.defaults.withCredentials = true;
+
+// 页面加载时获取统计数据
+document.addEventListener('DOMContentLoaded', function() {
+    loadStats();
+});
+
+async function loadStats() {
+    console.log('开始加载统计数据...');
+
+    // 分别处理域名统计和用户统计，避免一个失败影响另一个
+    await loadDomainStats();
+    await loadUserStats();
+
+    console.log('统计数据加载完成');
+}
+
+async function loadDomainStats() {
+    try {
+        console.log('正在获取域名统计...');
+        const domainsResponse = await axios.get('/api/admin/domains');
+        console.log('域名API响应:', domainsResponse.data);
+
+        if (domainsResponse.data.success) {
+            const domains = domainsResponse.data.data || [];
+            document.getElementById('totalDomains').textContent = domains.length;
+            document.getElementById('verifiedDomains').textContent = domains.filter(d => d.is_verified).length;
+            console.log('域名统计更新完成:', domains.length, '个域名');
+        } else {
+            console.error('域名API返回失败:', domainsResponse.data);
+            document.getElementById('totalDomains').textContent = '0';
+            document.getElementById('verifiedDomains').textContent = '0';
+        }
+    } catch (error) {
+        console.error('获取域名统计失败:', error);
+        document.getElementById('totalDomains').textContent = '0';
+        document.getElementById('verifiedDomains').textContent = '0';
+    }
+}
+
+async function loadUserStats() {
+    try {
+        console.log('正在获取用户统计...');
+        const usersResponse = await axios.get('/api/admin/users');
+        console.log('用户API响应:', usersResponse.data);
+
+        if (usersResponse.data.success) {
+            const users = usersResponse.data.data || [];
+            document.getElementById('totalUsers').textContent = users.length;
+            console.log('用户统计更新完成:', users.length, '个用户');
+        } else {
+            console.error('用户API返回失败:', usersResponse.data);
+            document.getElementById('totalUsers').textContent = '0';
+        }
+    } catch (error) {
+        console.error('获取用户统计失败:', error);
+        document.getElementById('totalUsers').textContent = '0';
+    }
+}
+
+function refreshStats() {
+    loadStats();
+    // 显示刷新提示
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i>刷新中...';
+    btn.disabled = true;
+    
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }, 1000);
+}
+
+async function logout() {
+    try {
+        await axios.post('/api/logout');
+        window.location.href = '/admin/login';
+    } catch (error) {
+        console.error('Logout error:', error);
+        window.location.href = '/admin/login';
+    }
+}
+</script>
+</body>
+</html>

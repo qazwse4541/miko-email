@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理 - {{.site_name}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-radius: 0 20px 20px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .sidebar .nav-link {
+            color: #667eea !important;
+            border-radius: 12px;
+            margin: 0.25rem 0;
+            transition: all 0.3s ease;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background: linear-gradient(45deg, #667eea, #764ba2) !important;
+            color: white !important;
+            transform: translateX(5px);
+        }
+        .main-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px 0 0 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .border-left-primary {
+            border-left: 4px solid #667eea !important;
+        }
+        .border-left-success {
+            border-left: 4px solid #28a745 !important;
+        }
+        .border-left-info {
+            border-left: 4px solid #17a2b8 !important;
+        }
+        .border-left-warning {
+            border-left: 4px solid #ffc107 !important;
+        }
+        .btn {
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .form-control, .form-select {
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .table {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .badge {
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+        }
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row min-vh-100">
+        <!-- 侧边栏 -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="d-flex flex-column h-100 p-3 text-dark">
+                <a href="/admin/dashboard" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none">
+                    {{if .site_logo}}
+                        <img src="{{.site_logo}}" alt="{{.site_name}}" style="height: 32px; margin-right: 8px;">
+                    {{else}}
+                        <i class="bi bi-shield-check me-2 text-primary"></i>
+                    {{end}}
+                    <span class="fs-4 fw-bold text-primary">{{.site_name}}管理</span>
+                </a>
+                <hr>
+                <ul class="nav nav-pills flex-column mb-auto">
+                    <li class="nav-item">
+                        <a href="/admin/dashboard" class="nav-link">
+                            <i class="bi bi-speedometer2 me-2"></i>
+                            仪表板
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/users" class="nav-link active">
+                            <i class="bi bi-people me-2"></i>
+                            用户管理
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/mailboxes" class="nav-link">
+                            <i class="bi bi-envelope me-2"></i>
+                            邮箱管理
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/domains" class="nav-link">
+                            <i class="bi bi-globe me-2"></i>
+                            域名管理
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/system-settings" class="nav-link">
+                            <i class="bi bi-gear me-2"></i>
+                            系统设置
+                        </a>
+                    </li>
+                </ul>
+                <hr>
+                <div class="dropdown">
+                    <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle text-primary" id="dropdownUser1" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle me-2"></i>
+                        <strong>管理员</strong>
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li><a class="dropdown-item" href="/settings">个人设置</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="logout()">退出登录</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="container-fluid p-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2 text-primary fw-bold">用户管理</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshUsers()">
+                                <i class="bi bi-arrow-clockwise"></i> 刷新
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="exportUsers()">
+                                <i class="bi bi-download"></i> 导出
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="row mb-4">
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">总用户数</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalUsers">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-people display-4 text-primary"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-success shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">活跃用户</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="activeUsers">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-person-check display-4 text-success"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-info shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">今日新增</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="todayUsers">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-person-plus display-4 text-info"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-warning shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">总邮箱数</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalMailboxes">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-collection display-4 text-warning"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 搜索和筛选 -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="searchInput" placeholder="搜索用户名或邮箱...">
+                            <button class="btn btn-outline-secondary" type="button" onclick="searchUsers()">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="statusFilter" onchange="filterUsers()">
+                            <option value="">所有状态</option>
+                            <option value="active">活跃</option>
+                            <option value="suspended">暂停</option>
+                            <option value="deleted">已删除</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="sortBy" onchange="sortUsers()">
+                            <option value="created_at">按注册时间</option>
+                            <option value="username">按用户名</option>
+                            <option value="contribution">按贡献度</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 用户列表 -->
+                <div class="card shadow">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">用户列表</h6>
+                        <div class="user-actions" id="userActions" style="display: none;">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllUsers()">
+                                    <i class="bi bi-check-all"></i> 全选
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="unselectAllUsers()">
+                                    <i class="bi bi-x-circle"></i> 取消全选
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="disableSelectedUsers()">
+                                    <i class="bi bi-person-x"></i> 禁用选中
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-success" onclick="enableSelectedUsers()">
+                                    <i class="bi bi-person-check"></i> 启用选中
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteSelectedUsers()">
+                                    <i class="bi bi-trash"></i> 删除选中
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger" onclick="deleteAllUsers()">
+                                    <i class="bi bi-trash-fill"></i> 删除全部
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="usersTable">
+                                <thead>
+                                    <tr>
+                                        <th width="50">
+                                            <input type="checkbox" class="form-check-input" id="selectAllCheckbox"
+                                                   onchange="toggleAllUsers(this.checked)">
+                                        </th>
+                                        <th>用户名</th>
+                                        <th>邮箱</th>
+                                        <th>贡献度</th>
+                                        <th>邮箱数量</th>
+                                        <th>状态</th>
+                                        <th>注册时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTableBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">加载中...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 分页 -->
+                        <nav aria-label="用户列表分页">
+                            <ul class="pagination justify-content-center" id="pagination">
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 用户详情模态框 -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">用户详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>用户名：</strong> <span id="userUsername"></span></p>
+                        <p><strong>邮箱：</strong> <span id="userEmail"></span></p>
+                        <p><strong>贡献度：</strong> <span id="userContribution"></span></p>
+                        <p><strong>状态：</strong> <span id="userStatus"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>注册时间：</strong> <span id="userCreatedAt"></span></p>
+                        <p><strong>最后登录：</strong> <span id="userLastLogin"></span></p>
+                        <p><strong>邀请码：</strong> <span id="userInviteCode"></span></p>
+                        <p><strong>邮箱数量：</strong> <span id="userMailboxCount"></span></p>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <h6>用户邮箱列表</h6>
+                <div id="userMailboxes">
+                    <div class="text-center py-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-warning" onclick="suspendUser()">
+                    <i class="bi bi-pause-circle"></i> 暂停用户
+                </button>
+                <button type="button" class="btn btn-danger" onclick="deleteUserFromModal()">
+                    <i class="bi bi-trash"></i> 删除用户
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 全局提示框 -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="alertToast" class="toast" role="alert">
+        <div class="toast-header">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong class="me-auto">系统提示</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="alertMessage">
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="/static/js/common.js"></script>
+<script>
+// 配置axios默认设置
+axios.defaults.withCredentials = true;
+
+let currentUsers = [];
+let filteredUsers = [];
+let currentPage = 1;
+let pageSize = 10;
+let selectedUserId = null;
+
+// 页面加载时获取数据
+document.addEventListener('DOMContentLoaded', function() {
+    loadUsers();
+});
+
+async function loadUsers() {
+    try {
+        const response = await axios.get('/api/admin/users');
+        if (response.data.success) {
+            currentUsers = response.data.data || [];
+            filteredUsers = [...currentUsers];
+            updateStatistics();
+            renderUsers();
+        }
+    } catch (error) {
+        console.error('Failed to load users:', error);
+        document.getElementById('usersTableBody').innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <i class="bi bi-exclamation-circle text-warning"></i>
+                    <span class="text-muted ms-2">加载用户失败</span>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+function updateStatistics() {
+    const total = currentUsers.length;
+    const active = currentUsers.filter(u => u.status === 'active').length;
+    const today = new Date().toDateString();
+    const todayCount = currentUsers.filter(u => 
+        new Date(u.created_at).toDateString() === today
+    ).length;
+    const totalMailboxes = currentUsers.reduce((sum, u) => sum + (u.mailbox_count || 0), 0);
+
+    document.getElementById('totalUsers').textContent = total;
+    document.getElementById('activeUsers').textContent = active;
+    document.getElementById('todayUsers').textContent = todayCount;
+    document.getElementById('totalMailboxes').textContent = totalMailboxes;
+}
+
+function renderUsers() {
+    const tbody = document.getElementById('usersTableBody');
+    const actionsDiv = document.getElementById('userActions');
+
+    if (!filteredUsers || filteredUsers.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-4">
+                    <i class="bi bi-info-circle text-info"></i>
+                    <span class="text-muted ms-2">暂无用户数据</span>
+                </td>
+            </tr>
+        `;
+        actionsDiv.style.display = 'none';
+        return;
+    }
+
+    // 显示操作按钮
+    actionsDiv.style.display = 'block';
+
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const pageUsers = filteredUsers.slice(startIndex, endIndex);
+
+    const usersHtml = pageUsers.map(user => `
+        <tr data-user-id="${user.id}">
+            <td>
+                <input type="checkbox" class="form-check-input user-checkbox" value="${user.id}"
+                       onclick="updateSelectedCount()">
+            </td>
+            <td>${escapeHtml(user.username)}</td>
+            <td>${escapeHtml(user.email)}</td>
+            <td>${user.contribution || 0}</td>
+            <td>${user.mailbox_count || 0}</td>
+            <td>${getStatusBadge(user.status)}</td>
+            <td>${formatDate(user.created_at)}</td>
+            <td>
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-primary" onclick="showUserDetail('${user.id}')">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                    <button class="btn btn-sm ${user.status === 'active' ? 'btn-outline-warning' : 'btn-outline-success'}" onclick="toggleUserStatus('${user.id}')">
+                        <i class="bi ${user.status === 'active' ? 'bi-pause-circle' : 'bi-play-circle'}"></i>
+                        ${user.status === 'active' ? '暂停' : '启用'}
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('${user.id}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+
+    tbody.innerHTML = usersHtml;
+    renderPagination();
+    updateSelectedCount();
+}
+
+function getStatusBadge(status) {
+    switch (status) {
+        case 'active':
+            return '<span class="badge bg-success">活跃</span>';
+        case 'suspended':
+            return '<span class="badge bg-warning">暂停</span>';
+        case 'deleted':
+            return '<span class="badge bg-danger">已删除</span>';
+        default:
+            return '<span class="badge bg-secondary">未知</span>';
+    }
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('zh-CN');
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(filteredUsers.length / pageSize);
+    const pagination = document.getElementById('pagination');
+    
+    if (totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+
+    let paginationHtml = '';
+    
+    // 上一页
+    paginationHtml += `
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">上一页</a>
+        </li>
+    `;
+    
+    // 页码
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            paginationHtml += `
+                <li class="page-item ${i === currentPage ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+                </li>
+            `;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            paginationHtml += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+    }
+    
+    // 下一页
+    paginationHtml += `
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">下一页</a>
+        </li>
+    `;
+    
+    pagination.innerHTML = paginationHtml;
+}
+
+function changePage(page) {
+    const totalPages = Math.ceil(filteredUsers.length / pageSize);
+    if (page < 1 || page > totalPages) return;
+    
+    currentPage = page;
+    renderUsers();
+}
+
+async function showUserDetail(userId) {
+    // 确保类型匹配
+    const targetId = parseInt(userId);
+    selectedUserId = targetId;
+    const user = currentUsers.find(u => u.id === targetId);
+    if (!user) {
+        console.error('未找到用户:', userId, '可用用户:', currentUsers);
+        showAlert('未找到指定用户');
+        return;
+    }
+
+    // 填充用户基本信息
+    document.getElementById('userUsername').textContent = user.username;
+    document.getElementById('userEmail').textContent = user.email;
+    document.getElementById('userContribution').textContent = user.contribution || 0;
+    document.getElementById('userStatus').innerHTML = getStatusBadge(user.status);
+    document.getElementById('userCreatedAt').textContent = formatDate(user.created_at);
+    document.getElementById('userLastLogin').textContent = formatDate(user.last_login);
+    document.getElementById('userInviteCode').textContent = user.invite_code || '无';
+    document.getElementById('userMailboxCount').textContent = user.mailbox_count || 0;
+
+    // 加载用户邮箱列表
+    try {
+        const response = await axios.get(`/api/admin/users/${userId}/mailboxes`);
+        if (response.data.success) {
+            const mailboxes = response.data.data;
+            renderUserMailboxes(mailboxes);
+        }
+    } catch (error) {
+        console.error('Failed to load user mailboxes:', error);
+        document.getElementById('userMailboxes').innerHTML = `
+            <div class="text-center py-3">
+                <i class="bi bi-exclamation-circle text-warning"></i>
+                <span class="text-muted ms-2">加载邮箱失败</span>
+            </div>
+        `;
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('userModal'));
+    modal.show();
+}
+
+function renderUserMailboxes(mailboxes) {
+    const container = document.getElementById('userMailboxes');
+
+    if (!mailboxes || mailboxes.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-3">
+                <i class="bi bi-info-circle text-info"></i>
+                <span class="text-muted ms-2">该用户暂无邮箱</span>
+            </div>
+        `;
+        return;
+    }
+
+    const mailboxesHtml = mailboxes.map(mailbox => `
+        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <span>${mailbox.email}</span>
+            <span class="badge ${mailbox.status === 'active' ? 'bg-success' : 'bg-secondary'}">${mailbox.status === 'active' ? '正常' : '暂停'}</span>
+        </div>
+    `).join('');
+
+    container.innerHTML = mailboxesHtml;
+}
+
+function searchUsers() {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    if (!query) {
+        filteredUsers = [...currentUsers];
+    } else {
+        filteredUsers = currentUsers.filter(user =>
+            user.username.toLowerCase().includes(query) ||
+            user.email.toLowerCase().includes(query)
+        );
+    }
+
+    currentPage = 1;
+    renderUsers();
+}
+
+function filterUsers() {
+    const status = document.getElementById('statusFilter').value;
+    const query = document.getElementById('searchInput').value.toLowerCase();
+
+    filteredUsers = currentUsers.filter(user => {
+        const matchesStatus = !status || user.status === status;
+        const matchesQuery = !query ||
+            user.username.toLowerCase().includes(query) ||
+            user.email.toLowerCase().includes(query);
+
+        return matchesStatus && matchesQuery;
+    });
+
+    currentPage = 1;
+    renderUsers();
+}
+
+function sortUsers() {
+    const sortBy = document.getElementById('sortBy').value;
+
+    filteredUsers.sort((a, b) => {
+        switch (sortBy) {
+            case 'username':
+                return a.username.localeCompare(b.username);
+            case 'contribution':
+                return (b.contribution || 0) - (a.contribution || 0);
+            case 'created_at':
+            default:
+                return new Date(b.created_at) - new Date(a.created_at);
+        }
+    });
+
+    renderUsers();
+}
+
+async function toggleUserStatus(userId) {
+    // 确保类型匹配
+    const targetId = parseInt(userId);
+    const user = currentUsers.find(u => u.id === targetId);
+    if (!user) {
+        console.error('未找到用户:', userId, '可用用户:', currentUsers);
+        showAlert('未找到指定用户');
+        return;
+    }
+
+    const newStatus = user.status === 'active' ? 'suspended' : 'active';
+    const action = newStatus === 'suspended' ? '暂停' : '激活';
+
+    if (!confirm(`确定要${action}用户 ${user.username} 吗？`)) {
+        return;
+    }
+
+    try {
+        const response = await axios.put(`/api/admin/users/${targetId}/status`, {
+            status: newStatus
+        });
+
+        if (response.data.success) {
+            showAlert(`用户${action}成功！`);
+            loadUsers();
+        } else {
+            showAlert(response.data.message || `用户${action}失败`);
+        }
+    } catch (error) {
+        console.error('Toggle user status error:', error);
+        showAlert('操作失败，请稍后重试');
+    }
+}
+
+async function suspendUser() {
+    if (!selectedUserId) return;
+
+    const user = currentUsers.find(u => u.id === selectedUserId);
+    if (!user) return;
+
+    if (!confirm(`确定要暂停用户 ${user.username} 吗？`)) {
+        return;
+    }
+
+    try {
+        const response = await axios.put(`/api/admin/users/${selectedUserId}/status`, {
+            status: 'suspended'
+        });
+
+        if (response.data.success) {
+            showAlert('用户暂停成功！');
+
+            // 关闭模态框
+            const modal = bootstrap.Modal.getInstance(document.getElementById('userModal'));
+            modal.hide();
+
+            loadUsers();
+        } else {
+            showAlert(response.data.message || '用户暂停失败');
+        }
+    } catch (error) {
+        console.error('Suspend user error:', error);
+        showAlert('操作失败，请稍后重试');
+    }
+}
+
+async function deleteUserFromModal() {
+    if (!selectedUserId) return;
+
+    const user = currentUsers.find(u => u.id === selectedUserId);
+    if (!user) return;
+
+    if (!confirm(`确定要删除用户 ${user.username} 吗？此操作不可撤销！`)) {
+        return;
+    }
+
+    try {
+        const response = await axios.delete(`/api/admin/users/${selectedUserId}`);
+
+        if (response.data.success) {
+            showAlert('用户删除成功！');
+
+            // 关闭模态框
+            const modal = bootstrap.Modal.getInstance(document.getElementById('userModal'));
+            modal.hide();
+
+            loadUsers();
+        } else {
+            showAlert(response.data.message || '用户删除失败');
+        }
+    } catch (error) {
+        console.error('Delete user error:', error);
+        showAlert('操作失败，请稍后重试');
+    }
+}
+
+function refreshUsers() {
+    loadUsers();
+}
+
+function exportUsers() {
+    // TODO: 实现用户数据导出功能
+    showAlert('导出功能暂未实现');
+}
+
+function showAlert(message) {
+    document.getElementById('alertMessage').textContent = message;
+    const toast = new bootstrap.Toast(document.getElementById('alertToast'));
+    toast.show();
+}
+
+// 批量操作函数
+function selectAllUsers() {
+    const checkboxes = document.querySelectorAll('.user-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    selectAllCheckbox.checked = true;
+    updateSelectedCount();
+}
+
+function unselectAllUsers() {
+    const checkboxes = document.querySelectorAll('.user-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    selectAllCheckbox.checked = false;
+    updateSelectedCount();
+}
+
+function toggleAllUsers(checked) {
+    const checkboxes = document.querySelectorAll('.user-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = checked;
+    });
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+    const count = selectedCheckboxes.length;
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+
+    // 更新全选复选框状态
+    const allCheckboxes = document.querySelectorAll('.user-checkbox');
+    if (count === 0) {
+        selectAllCheckbox.indeterminate = false;
+        selectAllCheckbox.checked = false;
+    } else if (count === allCheckboxes.length) {
+        selectAllCheckbox.indeterminate = false;
+        selectAllCheckbox.checked = true;
+    } else {
+        selectAllCheckbox.indeterminate = true;
+    }
+
+    console.log(`已选中 ${count} 个用户`);
+}
+
+function getSelectedUserIds() {
+    const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+    return Array.from(selectedCheckboxes).map(checkbox => parseInt(checkbox.value));
+}
+
+async function disableSelectedUsers() {
+    const selectedIds = getSelectedUserIds();
+
+    if (selectedIds.length === 0) {
+        showAlert('请先选择要禁用的用户');
+        return;
+    }
+
+    if (!confirm(`确定要禁用选中的 ${selectedIds.length} 个用户吗？`)) {
+        return;
+    }
+
+    try {
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const userId of selectedIds) {
+            try {
+                const response = await axios.put(`/api/admin/users/${userId}/status`, { status: 'suspended' });
+                if (response.data.success) {
+                    successCount++;
+                } else {
+                    failCount++;
+                    console.error(`禁用用户 ${userId} 失败:`, response.data.message);
+                }
+            } catch (error) {
+                failCount++;
+                console.error(`禁用用户 ${userId} 失败:`, error);
+            }
+        }
+
+        if (successCount > 0) {
+            showAlert(`成功禁用 ${successCount} 个用户${failCount > 0 ? `，${failCount} 个失败` : ''}`);
+        } else {
+            showAlert('所有用户禁用失败');
+        }
+
+        loadUsers();
+    } catch (error) {
+        console.error('禁用用户失败:', error);
+        showAlert('禁用用户失败，请重试');
+    }
+}
+
+async function enableSelectedUsers() {
+    const selectedIds = getSelectedUserIds();
+
+    if (selectedIds.length === 0) {
+        showAlert('请先选择要启用的用户');
+        return;
+    }
+
+    if (!confirm(`确定要启用选中的 ${selectedIds.length} 个用户吗？`)) {
+        return;
+    }
+
+    try {
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const userId of selectedIds) {
+            try {
+                const response = await axios.put(`/api/admin/users/${userId}/status`, { status: 'active' });
+                if (response.data.success) {
+                    successCount++;
+                } else {
+                    failCount++;
+                    console.error(`启用用户 ${userId} 失败:`, response.data.message);
+                }
+            } catch (error) {
+                failCount++;
+                console.error(`启用用户 ${userId} 失败:`, error);
+            }
+        }
+
+        if (successCount > 0) {
+            showAlert(`成功启用 ${successCount} 个用户${failCount > 0 ? `，${failCount} 个失败` : ''}`);
+        } else {
+            showAlert('所有用户启用失败');
+        }
+
+        loadUsers();
+    } catch (error) {
+        console.error('启用用户失败:', error);
+        showAlert('启用用户失败，请重试');
+    }
+}
+
+async function deleteSelectedUsers() {
+    const selectedIds = getSelectedUserIds();
+
+    if (selectedIds.length === 0) {
+        showAlert('请先选择要删除的用户');
+        return;
+    }
+
+    if (!confirm(`确定要删除选中的 ${selectedIds.length} 个用户吗？此操作不可恢复！`)) {
+        return;
+    }
+
+    try {
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const userId of selectedIds) {
+            try {
+                const response = await axios.delete(`/api/admin/users/${userId}`);
+                if (response.data.success) {
+                    successCount++;
+                } else {
+                    failCount++;
+                    console.error(`删除用户 ${userId} 失败:`, response.data.message);
+                }
+            } catch (error) {
+                failCount++;
+                console.error(`删除用户 ${userId} 失败:`, error);
+            }
+        }
+
+        if (successCount > 0) {
+            showAlert(`成功删除 ${successCount} 个用户${failCount > 0 ? `，${failCount} 个失败` : ''}`);
+        } else {
+            showAlert('所有用户删除失败');
+        }
+
+        loadUsers();
+    } catch (error) {
+        console.error('删除用户失败:', error);
+        showAlert('删除用户失败，请重试');
+    }
+}
+
+async function deleteAllUsers() {
+    if (filteredUsers.length === 0) {
+        showAlert('没有用户可删除');
+        return;
+    }
+
+    if (!confirm(`确定要删除所有 ${filteredUsers.length} 个用户吗？此操作不可恢复！`)) {
+        return;
+    }
+
+    try {
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const user of filteredUsers) {
+            try {
+                const response = await axios.delete(`/api/admin/users/${user.id}`);
+                if (response.data.success) {
+                    successCount++;
+                } else {
+                    failCount++;
+                    console.error(`删除用户 ${user.id} 失败:`, response.data.message);
+                }
+            } catch (error) {
+                failCount++;
+                console.error(`删除用户 ${user.id} 失败:`, error);
+            }
+        }
+
+        if (successCount > 0) {
+            showAlert(`成功删除 ${successCount} 个用户${failCount > 0 ? `，${failCount} 个失败` : ''}`);
+        } else {
+            showAlert('所有用户删除失败');
+        }
+
+        loadUsers();
+    } catch (error) {
+        console.error('删除所有用户失败:', error);
+        showAlert('删除用户失败，请重试');
+    }
+}
+
+async function deleteUser(userId) {
+    if (!confirm('确定要删除这个用户吗？此操作不可恢复！')) {
+        return;
+    }
+
+    try {
+        // 确保类型匹配
+        const targetId = parseInt(userId);
+        const response = await axios.delete(`/api/admin/users/${targetId}`);
+        if (response.data.success) {
+            showAlert('用户删除成功');
+            loadUsers();
+        } else {
+            showAlert(response.data.message || '删除用户失败');
+        }
+    } catch (error) {
+        console.error('删除用户失败:', error);
+        if (error.response && error.response.data && error.response.data.message) {
+            showAlert(error.response.data.message);
+        } else {
+            showAlert('删除用户失败，请重试');
+        }
+    }
+}
+
+async function logout() {
+    try {
+        await axios.post('/api/logout');
+        window.location.href = '/login';
+    } catch (error) {
+        console.error('Logout error:', error);
+        window.location.href = '/login';
+    }
+}
+
+// 搜索框回车事件
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        searchUsers();
+    }
+});
+</script>
+</body>
+</html>

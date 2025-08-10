@@ -1,0 +1,4 @@
+go run tools/config_manager.go admin
+go run tools/sync_admin.go sync
+./tools/config_managerls admin
+./tools/sync_admin sync

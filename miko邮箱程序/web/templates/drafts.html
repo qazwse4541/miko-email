@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>草稿箱 - {{.site_name}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-radius: 0 20px 20px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .sidebar .nav-link {
+            color: #667eea !important;
+            border-radius: 12px;
+            margin: 0.25rem 0;
+            transition: all 0.3s ease;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background: linear-gradient(45deg, #667eea, #764ba2) !important;
+            color: white !important;
+            transform: translateX(5px);
+        }
+        .main-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px 0 0 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        .btn {
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .form-control, .form-select {
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .email-item {
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-radius: 8px;
+            margin: 0.25rem 0;
+            padding: 0.75rem;
+        }
+        .email-item:hover {
+            background-color: rgba(102, 126, 234, 0.1);
+        }
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row min-vh-100">
+        <!-- 侧边栏 -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="d-flex flex-column h-100 p-3 text-dark">
+                <a href="/dashboard" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none">
+                    {{if .site_logo}}
+                        <img src="{{.site_logo}}" alt="{{.site_name}}" style="height: 32px; margin-right: 8px;">
+                    {{else}}
+                        <i class="bi bi-envelope-heart me-2 text-primary"></i>
+                    {{end}}
+                    <span class="fs-4 fw-bold text-primary">{{.site_name}}</span>
+                </a>
+                <hr>
+                <ul class="nav nav-pills flex-column mb-auto">
+                    <li class="nav-item">
+                        <a href="/dashboard" class="nav-link">
+                            <i class="bi bi-speedometer2 me-2"></i>
+                            仪表板
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/inbox" class="nav-link">
+                            <i class="bi bi-inbox me-2"></i>
+                            收件箱
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/sent" class="nav-link">
+                            <i class="bi bi-send me-2"></i>
+                            已发送
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/drafts" class="nav-link active">
+                            <i class="bi bi-file-earmark-text me-2"></i>
+                            草稿箱
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/compose" class="nav-link">
+                            <i class="bi bi-pencil-square me-2"></i>
+                            写邮件
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/forward" class="nav-link">
+                            <i class="bi bi-trash me-2"></i>
+                            转邮件
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/mailboxes" class="nav-link">
+                            <i class="bi bi-collection me-2"></i>
+                            邮箱管理
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/settings" class="nav-link">
+                            <i class="bi bi-gear me-2"></i>
+                            设置
+                        </a>
+                    </li>
+                </ul>
+                <hr>
+                <div class="dropdown">
+                    <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle text-primary" id="dropdownUser1" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle me-2"></i>
+                        <strong>{{.username}}</strong>
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li><a class="dropdown-item" href="/settings">个人设置</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="logout()">退出登录</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="container-fluid p-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2 text-primary fw-bold">草稿箱</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshDrafts()">
+                                <i class="bi bi-arrow-clockwise"></i> 刷新
+                            </button>
+                            <a href="/compose" class="btn btn-sm btn-primary">
+                                <i class="bi bi-pencil-square"></i> 写邮件
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 邮箱选择器 -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <select class="form-select" id="mailboxSelect" onchange="loadDrafts()">
+                            <option value="" selected>全部草稿</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="searchInput" placeholder="搜索草稿...">
+                            <button class="btn btn-outline-secondary" type="button" onclick="searchDrafts()">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 草稿列表 -->
+                <div class="card shadow">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">草稿邮件</h6>
+                        <div class="email-actions" id="emailActions" style="display: none;">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllDrafts()">
+                                    <i class="bi bi-check-all"></i> 全选
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="unselectAllDrafts()">
+                                    <i class="bi bi-x-circle"></i> 取消全选
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteSelectedDrafts()">
+                                    <i class="bi bi-trash"></i> 删除选中
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger" onclick="deleteAllDrafts()">
+                                    <i class="bi bi-trash-fill"></i> 删除全部
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="draftsContainer">
+                            <div class="text-center py-5">
+                                <i class="bi bi-file-earmark-text display-1 text-muted"></i>
+                                <p class="text-muted mt-3">请选择邮箱查看草稿</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 草稿详情模态框 -->
+<div class="modal fade" id="draftModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="draftSubject">草稿详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <strong>收件人：</strong> <span id="draftTo"></span>
+                </div>
+                <div class="mb-3">
+                    <strong>创建时间：</strong> <span id="draftDate"></span>
+                </div>
+                <div class="mb-3">
+                    <strong>状态：</strong> <span id="draftStatus" class="badge bg-secondary">草稿</span>
+                </div>
+                <hr>
+                <div id="draftContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary" onclick="editDraft()">
+                    <i class="bi bi-pencil me-2"></i>编辑草稿
+                </button>
+                <button type="button" class="btn btn-danger" onclick="deleteSingleDraftFromModal()">
+                    <i class="bi bi-trash me-2"></i>删除草稿
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除选中的草稿吗？此操作无法撤销。</p>
+                <div id="deleteList"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeleteSelected()">删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        let currentDrafts = [];
+        let selectedDrafts = [];
+        let currentDraftId = null;
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMailboxes();
+            // 页面加载时自动加载全部草稿
+            setTimeout(() => {
+                loadDrafts();
+            }, 500);
+        });
+
+        // 加载邮箱列表
+        async function loadMailboxes() {
+            try {
+                const response = await axios.get('/api/mailboxes');
+                if (response.data.success) {
+                    const mailboxes = response.data.data;
+                    const select = document.getElementById('mailboxSelect');
+                    select.innerHTML = '<option value="" selected>全部草稿</option>';
+
+                    mailboxes.forEach(mailbox => {
+                        const option = document.createElement('option');
+                        option.value = mailbox.email;
+                        option.textContent = mailbox.email;
+                        select.appendChild(option);
+                    });
+
+                    console.log('Mailboxes loaded:', mailboxes.length); // 调试日志
+                }
+            } catch (error) {
+                console.error('Failed to load mailboxes:', error);
+            }
+        }
+
+        // 加载草稿列表
+        async function loadDrafts() {
+            const mailbox = document.getElementById('mailboxSelect').value;
+            const container = document.getElementById('draftsContainer');
+            const actionsDiv = document.getElementById('emailActions');
+
+            // 显示加载状态
+            container.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                    <p class="text-muted mt-3">正在加载草稿...</p>
+                </div>
+            `;
+
+            try {
+                // 构建API URL
+                let apiUrl = '/api/emails?type=draft&limit=100'; // 增加limit以获取更多草稿
+                if (mailbox) {
+                    apiUrl += `&mailbox=${encodeURIComponent(mailbox)}`;
+                }
+
+                console.log('Loading drafts from:', apiUrl); // 调试日志
+
+                const response = await axios.get(apiUrl);
+                console.log('Drafts response:', response.data); // 调试日志
+
+                if (response.data.success) {
+                    currentDrafts = response.data.data || [];
+                    console.log('Current drafts:', currentDrafts); // 调试日志
+                    renderDrafts(currentDrafts);
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-5">
+                            <i class="bi bi-exclamation-circle display-1 text-warning"></i>
+                            <p class="text-muted mt-3">加载草稿失败: ${response.data.message || '未知错误'}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Failed to load drafts:', error);
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="bi bi-wifi-off display-1 text-danger"></i>
+                        <p class="text-muted mt-3">网络错误，请稍后重试</p>
+                        <p class="text-muted small">错误详情: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 渲染草稿列表
+        function renderDrafts(drafts) {
+            const container = document.getElementById('draftsContainer');
+            const actionsDiv = document.getElementById('emailActions');
+
+            if (!drafts || drafts.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="bi bi-file-earmark-text display-1 text-muted"></i>
+                        <p class="text-muted mt-3">暂无草稿</p>
+                    </div>
+                `;
+                actionsDiv.style.display = 'none';
+                return;
+            }
+
+            actionsDiv.style.display = 'block';
+
+            const draftsHtml = drafts.map((draft, index) => `
+                <div class="email-item" onclick="showDraftDetail(${draft.id})">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <input type="checkbox" class="form-check-input" value="${draft.id}"
+                                   onclick="event.stopPropagation(); toggleDraftSelection(${draft.id})">
+                        </div>
+                        <div class="col-md-3">
+                            <strong>${escapeHtml(draft.to_addr || '无收件人')}</strong>
+                        </div>
+                        <div class="col-md-5">
+                            <span>${escapeHtml(draft.subject || '无主题')}</span>
+                        </div>
+                        <div class="col-md-3 text-end">
+                            <small class="text-muted">${formatDate(draft.updated_at)}</small>
+                            <span class="badge bg-secondary ms-2">草稿</span>
+                        </div>
+                        <div class="col-auto">
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                        data-bs-toggle="dropdown" onclick="event.stopPropagation();">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="editDraftById(${draft.id})">
+                                        <i class="bi bi-pencil me-2"></i>编辑
+                                    </a></li>
+                                    <li><a class="dropdown-item text-danger" href="#" onclick="deleteSingleDraft(${draft.id})">
+                                        <i class="bi bi-trash me-2"></i>删除
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = draftsHtml;
+
+            // 更新选择状态UI
+            updateSelectionUI();
+        }
+
+        // 切换草稿选择状态
+        function toggleDraftSelection(draftId) {
+            const index = selectedDrafts.indexOf(draftId);
+            if (index > -1) {
+                selectedDrafts.splice(index, 1);
+            } else {
+                selectedDrafts.push(draftId);
+            }
+            updateSelectionUI();
+        }
+
+        // 更新选择状态UI
+        function updateSelectionUI() {
+            const checkboxes = document.querySelectorAll('.form-check-input');
+            checkboxes.forEach(checkbox => {
+                const draftId = parseInt(checkbox.value);
+                checkbox.checked = selectedDrafts.includes(draftId);
+            });
+
+            // 更新操作按钮的显示状态
+            const actionsDiv = document.getElementById('emailActions');
+            if (selectedDrafts.length > 0 || currentDrafts.length > 0) {
+                actionsDiv.style.display = 'block';
+            } else {
+                actionsDiv.style.display = 'none';
+            }
+        }
+
+        // 显示草稿详情
+        async function showDraftDetail(draftId) {
+            const draft = currentDrafts.find(d => d.id === draftId);
+            if (!draft) {
+                showAlert('草稿不存在');
+                return;
+            }
+
+            currentDraftId = draftId;
+
+            document.getElementById('draftSubject').textContent = draft.subject || '无主题';
+            document.getElementById('draftTo').textContent = draft.to_addr || '无收件人';
+            document.getElementById('draftDate').textContent = formatDate(draft.created_at);
+
+            const statusBadge = document.getElementById('draftStatus');
+            statusBadge.className = 'badge bg-secondary';
+            statusBadge.textContent = '草稿';
+
+            document.getElementById('draftContent').innerHTML = draft.body || '无内容';
+
+            const modal = new bootstrap.Modal(document.getElementById('draftModal'));
+            modal.show();
+        }
+
+        // 编辑草稿
+        function editDraft() {
+            if (currentDraftId) {
+                window.location.href = `/compose?draft_id=${currentDraftId}`;
+            }
+        }
+
+        // 根据ID编辑草稿
+        function editDraftById(draftId) {
+            window.location.href = `/compose?draft_id=${draftId}`;
+        }
+
+        // 从模态框删除单个草稿
+        function deleteSingleDraftFromModal() {
+            if (currentDraftId) {
+                deleteSingleDraft(currentDraftId);
+                bootstrap.Modal.getInstance(document.getElementById('draftModal')).hide();
+            }
+        }
+
+        // 删除单个草稿
+        async function deleteSingleDraft(draftId) {
+            if (!confirm('确定要删除这个草稿吗？')) {
+                return;
+            }
+
+            try {
+                const mailbox = document.getElementById('mailboxSelect').value;
+                await axios.delete(`/api/drafts/${draftId}`, {
+                    params: { mailbox: mailbox || currentDrafts.find(d => d.id === draftId)?.from_addr }
+                });
+                showAlert('草稿删除成功');
+                loadDrafts();
+            } catch (error) {
+                console.error('删除草稿失败:', error);
+                showAlert('删除草稿失败');
+            }
+        }
+
+        // 全选草稿
+        function selectAllDrafts() {
+            selectedDrafts = currentDrafts.map(draft => draft.id);
+            updateSelectionUI();
+            showAlert(`已选中 ${selectedDrafts.length} 个草稿`, 'info');
+        }
+
+        // 取消全选
+        function unselectAllDrafts() {
+            selectedDrafts = [];
+            updateSelectionUI();
+            showAlert('已取消全部选择', 'info');
+        }
+
+        // 删除选中的草稿
+        function deleteSelectedDrafts() {
+            if (selectedDrafts.length === 0) {
+                showAlert('请先选择要删除的草稿', 'warning');
+                return;
+            }
+
+            // 显示要删除的草稿信息
+            const selectedDraftsList = selectedDrafts.map(id => {
+                const draft = currentDrafts.find(d => d.id === id);
+                return `<li>${draft?.subject || '无主题'} (${draft?.to_addr || '无收件人'})</li>`;
+            }).join('');
+
+            const deleteList = document.getElementById('deleteList');
+            deleteList.innerHTML = `
+                <p>确定要删除以下 ${selectedDrafts.length} 个草稿吗？</p>
+                <ul class="list-unstyled">
+                    ${selectedDraftsList}
+                </ul>
+            `;
+
+            const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+            modal.show();
+        }
+
+        // 确认删除选中的草稿
+        async function confirmDeleteSelected() {
+            const deleteCount = selectedDrafts.length;
+            try {
+                const mailbox = document.getElementById('mailboxSelect').value;
+
+                // 逐个删除草稿
+                for (const draftId of selectedDrafts) {
+                    const draft = currentDrafts.find(d => d.id === draftId);
+                    await axios.delete(`/api/drafts/${draftId}`, {
+                        params: { mailbox: mailbox || draft?.from_addr }
+                    });
+                }
+
+                bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
+                showAlert(`成功删除 ${deleteCount} 个草稿`, 'success');
+                selectedDrafts = [];
+                loadDrafts();
+            } catch (error) {
+                console.error('批量删除草稿失败:', error);
+                showAlert('删除草稿失败，请重试', 'danger');
+            }
+        }
+
+        // 删除全部草稿
+        async function deleteAllDrafts() {
+            if (currentDrafts.length === 0) {
+                showAlert('没有草稿可删除', 'warning');
+                return;
+            }
+
+            if (!confirm(`确定要删除当前邮箱的所有 ${currentDrafts.length} 个草稿吗？此操作不可恢复！`)) {
+                return;
+            }
+
+            const deleteCount = currentDrafts.length;
+            try {
+                const mailbox = document.getElementById('mailboxSelect').value;
+
+                // 逐个删除所有草稿
+                for (const draft of currentDrafts) {
+                    await axios.delete(`/api/drafts/${draft.id}`, {
+                        params: { mailbox: mailbox || draft.from_addr }
+                    });
+                }
+
+                showAlert(`成功删除 ${deleteCount} 个草稿`, 'success');
+                selectedDrafts = []; // 清空选择
+                loadDrafts();
+            } catch (error) {
+                console.error('删除全部草稿失败:', error);
+                showAlert('删除草稿失败，请重试', 'danger');
+            }
+        }
+
+        // 搜索草稿
+        function searchDrafts() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            if (!searchTerm) {
+                renderDrafts(currentDrafts);
+                return;
+            }
+
+            const filteredDrafts = currentDrafts.filter(draft =>
+                (draft.subject && draft.subject.toLowerCase().includes(searchTerm)) ||
+                (draft.to_addr && draft.to_addr.toLowerCase().includes(searchTerm)) ||
+                (draft.body && draft.body.toLowerCase().includes(searchTerm))
+            );
+
+            renderDrafts(filteredDrafts);
+        }
+
+        // 刷新草稿列表
+        function refreshDrafts() {
+            loadDrafts();
+        }
+
+        // 工具函数
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 1) {
+                return '今天 ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            } else if (diffDays === 2) {
+                return '昨天 ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            } else if (diffDays <= 7) {
+                return diffDays + '天前';
+            } else {
+                return date.toLocaleDateString('zh-CN');
+            }
+        }
+
+        function showAlert(message, type = 'info') {
+            document.getElementById('alertMessage').textContent = message;
+            const toast = new bootstrap.Toast(document.getElementById('alertToast'));
+            toast.show();
+        }
+
+        // 退出登录
+        async function logout() {
+            try {
+                await axios.post('/api/logout');
+                window.location.href = '/login';
+            } catch (error) {
+                console.error('Logout failed:', error);
+                window.location.href = '/login';
+            }
+        }
+    </script>
+
+    <!-- 全局提示框 -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="alertToast" class="toast" role="alert">
+            <div class="toast-header">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong class="me-auto">系统提示</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="alertMessage">
+            </div>
+        </div>
+    </div>
+</body>
+</html>

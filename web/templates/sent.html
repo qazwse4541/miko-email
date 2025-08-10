@@ -419,15 +419,15 @@ async function showEmailDetail(emailId) {
 
 function forwardEmail() {
     if (!selectedEmail) return;
-    
-    const forwardSubject = selectedEmail.subject.startsWith('Fwd: ') ? 
+
+    const forwardSubject = selectedEmail.subject.startsWith('Fwd: ') ?
         selectedEmail.subject : 'Fwd: ' + selectedEmail.subject;
-    
+
     const params = new URLSearchParams({
         subject: forwardSubject,
-        forward_from: selectedEmail.id
+        forward: selectedEmail.id
     });
-    
+
     window.location.href = `/compose?${params.toString()}`;
 }
 

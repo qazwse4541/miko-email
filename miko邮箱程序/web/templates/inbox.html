@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>收件箱 - {{.site_name}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-radius: 0 20px 20px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .sidebar .nav-link {
+            color: #667eea !important;
+            border-radius: 12px;
+            margin: 0.25rem 0;
+            transition: all 0.3s ease;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background: linear-gradient(45deg, #667eea, #764ba2) !important;
+            color: white !important;
+            transform: translateX(5px);
+        }
+        .main-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px 0 0 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        .btn {
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .form-control, .form-select {
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .email-item {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .email-item:hover {
+            background-color: #f8f9fa;
+        }
+        .email-item.unread {
+            background-color: #f0f8ff;
+        }
+        .verification-code-container {
+            min-height: 24px;
+            display: flex;
+            align-items: center;
+        }
+        .verification-code-display {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .copy-code-btn {
+            padding: 2px 6px;
+            font-size: 12px;
+            border: none;
+            background: transparent;
+            color: #6c757d;
+            transition: color 0.2s;
+        }
+        .copy-code-btn:hover {
+            color: #0d6efd;
+            background: rgba(13, 110, 253, 0.1);
+        }
+        .badge {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row min-vh-100">
+        <!-- 侧边栏 -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="d-flex flex-column h-100 p-3 text-dark">
+                <a href="/dashboard" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none">
+                    {{if .site_logo}}
+                        <img src="{{.site_logo}}" alt="{{.site_name}}" style="height: 32px; margin-right: 8px;">
+                    {{else}}
+                        <i class="bi bi-envelope-heart me-2 text-primary"></i>
+                    {{end}}
+                    <span class="fs-4 fw-bold text-primary">{{.site_name}}</span>
+                </a>
+                <hr>
+                <ul class="nav nav-pills flex-column mb-auto">
+                    <li class="nav-item">
+                        <a href="/dashboard" class="nav-link">
+                            <i class="bi bi-speedometer2 me-2"></i>
+                            仪表板
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/inbox" class="nav-link active">
+                            <i class="bi bi-inbox me-2"></i>
+                            收件箱
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/sent" class="nav-link">
+                            <i class="bi bi-send me-2"></i>
+                            已发送
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/drafts" class="nav-link">
+                            <i class="bi bi-file-earmark-text me-2"></i>
+                            草稿箱
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/compose" class="nav-link">
+                            <i class="bi bi-pencil-square me-2"></i>
+                            写邮件
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/forward" class="nav-link">
+                            <i class="bi bi-arrow-right-circle me-2"></i>
+                            转邮件
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/mailboxes" class="nav-link">
+                            <i class="bi bi-collection me-2"></i>
+                            邮箱管理
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/settings" class="nav-link">
+                            <i class="bi bi-gear me-2"></i>
+                            设置
+                        </a>
+                    </li>
+                </ul>
+                <hr>
+                <div class="dropdown">
+                    <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle text-primary" id="dropdownUser1" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle me-2"></i>
+                        <strong>{{.username}}</strong>
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li><a class="dropdown-item" href="/settings">个人设置</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="logout()">退出登录</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="container-fluid p-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2 text-primary fw-bold">收件箱</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshEmails()">
+                                <i class="bi bi-arrow-clockwise"></i> 刷新
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="markAllRead()">
+                                <i class="bi bi-check2-all"></i> 全部已读
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 邮箱选择器 -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <select class="form-select" id="mailboxSelect" onchange="loadEmails()">
+                            <option value="">选择邮箱...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="searchInput" placeholder="搜索邮件...">
+                            <button class="btn btn-outline-secondary" type="button" onclick="searchEmails()">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 邮件列表 -->
+                <div class="card shadow">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">邮件列表</h6>
+                        <div class="email-actions" id="emailActions" style="display: none;">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllEmails()">
+                                    <i class="bi bi-check-all"></i> 全选
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="unselectAllEmails()">
+                                    <i class="bi bi-x-circle"></i> 取消全选
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteSelectedEmails()">
+                                    <i class="bi bi-trash"></i> 删除选中
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger" onclick="deleteAllEmails()">
+                                    <i class="bi bi-trash-fill"></i> 删除全部
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- 邮件列表表头 -->
+                        <div class="email-header border-bottom pb-2 mb-3" style="display: none;" id="emailHeader">
+                            <div class="row align-items-center text-muted small fw-bold">
+                                <div class="col-auto">
+                                    <input type="checkbox" class="form-check-input" disabled>
+                                </div>
+                                <div class="col-md-2">发件人</div>
+                                <div class="col-md-4">主题</div>
+                                <div class="col-md-3">验证码</div>
+                                <div class="col-md-2 text-end">时间</div>
+                            </div>
+                        </div>
+
+                        <div id="emailsContainer">
+                            <div class="text-center py-5">
+                                <i class="bi bi-inbox display-1 text-muted"></i>
+                                <p class="text-muted mt-3">请选择邮箱查看邮件</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 邮件详情模态框 -->
+<div class="modal fade" id="emailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="emailSubject">邮件详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <strong>发件人：</strong> <span id="emailFrom"></span>
+                </div>
+                <div class="mb-3">
+                    <strong>收件人：</strong> <span id="emailTo"></span>
+                </div>
+                <div class="mb-3">
+                    <strong>时间：</strong> <span id="emailDate"></span>
+                </div>
+                <div class="mb-3" id="emailAttachmentsSection" style="display: none;">
+                    <strong>附件：</strong>
+                    <div id="emailAttachments" class="mt-2"></div>
+                </div>
+                <hr>
+                <div id="emailContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="replyEmail()">
+                    <i class="bi bi-reply"></i> 回复
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+let currentEmails = [];
+let selectedEmail = null;
+
+// 页面加载时获取邮箱列表
+document.addEventListener('DOMContentLoaded', function() {
+    loadMailboxes();
+});
+
+async function loadMailboxes() {
+    try {
+        const response = await axios.get('/api/mailboxes');
+        if (response.data.success) {
+            const mailboxes = response.data.data;
+            const select = document.getElementById('mailboxSelect');
+            select.innerHTML = '<option value="">全部收件箱</option>';
+            
+            mailboxes.forEach(mailbox => {
+                const option = document.createElement('option');
+                option.value = mailbox.email;
+                option.textContent = mailbox.email;
+                select.appendChild(option);
+            });
+
+            // 加载完邮箱列表后自动加载邮件
+            loadEmails();
+        }
+    } catch (error) {
+        console.error('Failed to load mailboxes:', error);
+    }
+}
+
+async function loadEmails() {
+    const mailbox = document.getElementById('mailboxSelect').value;
+    // 移除邮箱选择检查，允许显示所有邮箱的邮件
+
+    try {
+        // 构建API URL，如果没有选择邮箱则不传mailbox参数
+        let apiUrl = '/api/emails?type=inbox';
+        if (mailbox) {
+            apiUrl += `&mailbox=${encodeURIComponent(mailbox)}`;
+        }
+        const response = await axios.get(apiUrl);
+        if (response.data.success) {
+            currentEmails = response.data.data || [];
+            renderEmails(currentEmails);
+        } else {
+            document.getElementById('emailsContainer').innerHTML = `
+                <div class="text-center py-5">
+                    <i class="bi bi-exclamation-circle display-1 text-warning"></i>
+                    <p class="text-muted mt-3">加载邮件失败</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Failed to load emails:', error);
+        document.getElementById('emailsContainer').innerHTML = `
+            <div class="text-center py-5">
+                <i class="bi bi-wifi-off display-1 text-danger"></i>
+                <p class="text-muted mt-3">网络错误，请稍后重试</p>
+            </div>
+        `;
+    }
+}
+
+function renderEmails(emails) {
+    const container = document.getElementById('emailsContainer');
+    const actionsDiv = document.getElementById('emailActions');
+    const headerDiv = document.getElementById('emailHeader');
+
+    if (!emails || emails.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="bi bi-inbox display-1 text-muted"></i>
+                <p class="text-muted mt-3">暂无邮件</p>
+            </div>
+        `;
+        actionsDiv.style.display = 'none';
+        headerDiv.style.display = 'none';
+        return;
+    }
+
+    // 显示操作按钮和表头
+    actionsDiv.style.display = 'block';
+    headerDiv.style.display = 'block';
+
+    const emailsHtml = emails.map(email => `
+        <div class="email-item border-bottom py-3 ${email.is_read ? '' : 'unread'}" data-email-id="${email.id}">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <input type="checkbox" class="form-check-input email-checkbox" value="${email.id}"
+                           onclick="event.stopPropagation(); updateSelectedCount();">
+                </div>
+                <div class="col-md-2" onclick="showEmailDetail('${email.id}')">
+                    <strong>${escapeHtml(email.from_addr || '未知发件人')}</strong>
+                </div>
+                <div class="col-md-4" onclick="showEmailDetail('${email.id}')">
+                    <span class="${email.is_read ? 'text-muted' : 'fw-bold'}">${escapeHtml(email.subject || '无主题')}</span>
+                    ${email.attachments && email.attachments.length > 0 ? '<i class="bi bi-paperclip text-muted ms-2" title="有附件"></i>' : ''}
+                </div>
+                <div class="col-md-3">
+                    <div class="verification-code-container" data-email-id="${email.id}">
+                        <span class="verification-code-loading text-muted">
+                            <i class="bi bi-hourglass-split"></i> 检测中...
+                        </span>
+                    </div>
+                </div>
+                <div class="col-md-2 text-end" onclick="showEmailDetail('${email.id}')">
+                    <small class="text-muted">${formatDate(email.created_at)}</small>
+                    ${!email.is_read ? '<i class="bi bi-circle-fill text-primary ms-2" style="font-size: 8px;"></i>' : ''}
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    container.innerHTML = emailsHtml;
+    updateSelectedCount();
+
+    // 异步加载每封邮件的验证码
+    loadVerificationCodes(emails);
+}
+
+async function showEmailDetail(emailId) {
+    const mailbox = document.getElementById('mailboxSelect').value;
+
+    try {
+        // 构建请求URL，如果有选择邮箱则添加mailbox参数
+        let url = `/api/emails/${emailId}`;
+        if (mailbox) {
+            url += `?mailbox=${encodeURIComponent(mailbox)}`;
+        }
+
+        // 获取邮件详情
+        const response = await axios.get(url);
+        if (response.data.success) {
+            const email = response.data.data;
+            selectedEmail = email;
+
+            document.getElementById('emailSubject').textContent = email.subject || '无主题';
+            document.getElementById('emailFrom').textContent = email.from_addr || '未知发件人';
+            document.getElementById('emailTo').textContent = email.to_addr || '';
+            document.getElementById('emailDate').textContent = formatDate(email.created_at);
+
+            // 显示附件
+            const attachmentsSection = document.getElementById('emailAttachmentsSection');
+            const attachmentsContainer = document.getElementById('emailAttachments');
+
+            if (email.attachments && email.attachments.length > 0) {
+                attachmentsSection.style.display = 'block';
+                attachmentsContainer.innerHTML = '';
+
+                email.attachments.forEach(attachment => {
+                    const attachmentElement = document.createElement('div');
+                    attachmentElement.className = 'attachment-item d-flex align-items-center mb-2 p-2 border rounded';
+
+                    // 根据文件类型显示不同图标
+                    let icon = 'bi-file-earmark';
+                    if (attachment.content_type.startsWith('image/')) {
+                        icon = 'bi-file-earmark-image';
+                    } else if (attachment.content_type.includes('pdf')) {
+                        icon = 'bi-file-earmark-pdf';
+                    } else if (attachment.content_type.includes('word')) {
+                        icon = 'bi-file-earmark-word';
+                    } else if (attachment.content_type.includes('excel') || attachment.content_type.includes('spreadsheet')) {
+                        icon = 'bi-file-earmark-excel';
+                    }
+
+                    attachmentElement.innerHTML = `
+                        <i class="bi ${icon} me-2"></i>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold">${attachment.filename}</div>
+                            <small class="text-muted">${formatFileSize(attachment.file_size)}</small>
+                        </div>
+                        <a href="/api/attachments/${attachment.id}" class="btn btn-sm btn-outline-primary" download="${attachment.filename}">
+                            <i class="bi bi-download"></i> 下载
+                        </a>
+                    `;
+
+                    attachmentsContainer.appendChild(attachmentElement);
+                });
+            } else {
+                attachmentsSection.style.display = 'none';
+            }
+
+            // 直接显示HTML内容，因为邮件内容来自富文本编辑器
+            document.getElementById('emailContent').innerHTML = email.body || '无内容';
+
+            const modal = new bootstrap.Modal(document.getElementById('emailModal'));
+            modal.show();
+
+            // 刷新邮件列表以更新已读状态
+            loadEmails();
+        }
+    } catch (error) {
+        console.error('Failed to load email detail:', error);
+        showAlert('加载邮件详情失败');
+    }
+}
+
+async function markEmailRead(emailId) {
+    try {
+        await axios.put(`/api/emails/${emailId}/read`);
+        // 更新本地状态
+        const email = currentEmails.find(e => e.id === emailId);
+        if (email) {
+            email.is_read = true;
+            renderEmails(currentEmails);
+        }
+    } catch (error) {
+        console.error('Failed to mark email as read:', error);
+    }
+}
+
+function replyEmail() {
+    if (!selectedEmail) return;
+
+    const replySubject = selectedEmail.subject.startsWith('Re: ') ?
+        selectedEmail.subject : 'Re: ' + selectedEmail.subject;
+
+    // 跳转到写邮件页面，带上回复信息
+    const params = new URLSearchParams({
+        to: selectedEmail.from_addr,
+        subject: replySubject,
+        reply_to: selectedEmail.id
+    });
+
+    window.location.href = `/compose?${params.toString()}`;
+}
+
+function refreshEmails() {
+    loadEmails();
+}
+
+async function markAllRead() {
+    const mailbox = document.getElementById('mailboxSelect').value;
+    if (!mailbox) {
+        showAlert('请先选择邮箱');
+        return;
+    }
+
+    try {
+        console.log('正在标记所有邮件为已读，邮箱:', mailbox);
+        const response = await axios.put(`/api/emails/mark-all-read?mailbox=${encodeURIComponent(mailbox)}`);
+        console.log('标记已读响应:', response.data);
+
+        if (response.data.success) {
+            showToast('所有邮件已标记为已读', 'success');
+            loadEmails();
+        } else {
+            showToast(response.data.message || '标记失败', 'danger');
+        }
+    } catch (error) {
+        console.error('Failed to mark all emails as read:', error);
+        let errorMessage = '标记邮件失败';
+        if (error.response && error.response.data) {
+            errorMessage = error.response.data.message || errorMessage;
+        }
+        showToast(errorMessage, 'danger');
+    }
+}
+
+function searchEmails() {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    if (!query) {
+        renderEmails(currentEmails);
+        return;
+    }
+
+    const filteredEmails = currentEmails.filter(email =>
+        (email.subject && email.subject.toLowerCase().includes(query)) ||
+        (email.from_addr && email.from_addr.toLowerCase().includes(query)) ||
+        (email.body && email.body.toLowerCase().includes(query))
+    );
+
+    renderEmails(filteredEmails);
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) {
+        return '今天 ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    } else if (diffDays === 2) {
+        return '昨天 ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    } else if (diffDays <= 7) {
+        return diffDays + '天前';
+    } else {
+        return date.toLocaleDateString('zh-CN');
+    }
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 邮件操作函数
+function selectAllEmails() {
+    const checkboxes = document.querySelectorAll('.email-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    updateSelectedCount();
+}
+
+function unselectAllEmails() {
+    const checkboxes = document.querySelectorAll('.email-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const selectedCheckboxes = document.querySelectorAll('.email-checkbox:checked');
+    const count = selectedCheckboxes.length;
+    console.log(`已选中 ${count} 封邮件`);
+}
+
+function getSelectedEmailIds() {
+    const selectedCheckboxes = document.querySelectorAll('.email-checkbox:checked');
+    return Array.from(selectedCheckboxes).map(checkbox => parseInt(checkbox.value));
+}
+
+async function deleteSelectedEmails() {
+    const selectedIds = getSelectedEmailIds();
+
+    if (selectedIds.length === 0) {
+        showAlert('请先选择要删除的邮件');
+        return;
+    }
+
+    if (!confirm(`确定要删除选中的 ${selectedIds.length} 封邮件吗？`)) {
+        return;
+    }
+
+    try {
+        for (const emailId of selectedIds) {
+            await axios.delete(`/api/emails/${emailId}`);
+        }
+
+        showAlert(`成功删除 ${selectedIds.length} 封邮件`);
+        // 删除后总是刷新邮件列表，无论是否选择了特定邮箱
+        loadEmails();
+    } catch (error) {
+        console.error('删除邮件失败:', error);
+        showAlert('删除邮件失败，请重试');
+    }
+}
+
+async function deleteAllEmails() {
+    if (currentEmails.length === 0) {
+        showAlert('没有邮件可删除');
+        return;
+    }
+
+    if (!confirm(`确定要删除当前邮箱的所有 ${currentEmails.length} 封邮件吗？此操作不可恢复！`)) {
+        return;
+    }
+
+    try {
+        for (const email of currentEmails) {
+            await axios.delete(`/api/emails/${email.id}`);
+        }
+
+        showAlert(`成功删除 ${currentEmails.length} 封邮件`);
+        // 删除后总是刷新邮件列表，无论是否选择了特定邮箱
+        loadEmails();
+    } catch (error) {
+        console.error('删除所有邮件失败:', error);
+        showAlert('删除邮件失败，请重试');
+    }
+}
+
+async function logout() {
+    try {
+        await axios.post('/api/logout');
+        window.location.href = '/login';
+    } catch (error) {
+        console.error('Logout error:', error);
+        window.location.href = '/login';
+    }
+}
+
+// 搜索框回车事件
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        searchEmails();
+    }
+});
+
+// 加载验证码
+async function loadVerificationCodes(emails) {
+    const mailbox = document.getElementById('mailboxSelect').value;
+
+    for (const email of emails) {
+        const container = document.querySelector(`[data-email-id="${email.id}"] .verification-code-container`);
+        if (!container) continue;
+
+        try {
+            const response = await axios.get('/api/emails/verification-code', {
+                params: {
+                    mailbox: mailbox,
+                    email_id: email.id
+                }
+            });
+
+            if (response.data.success && response.data.data && response.data.data.length > 0) {
+                const emailData = response.data.data[0];
+                const codes = emailData.codes || [];
+
+                const numericCodes = codes.filter(code =>
+                    /^\d{4,8}$/.test(code) && code.length >= 4 && code.length <= 8
+                );
+
+                if (numericCodes.length > 0) {
+                    const primaryCode = numericCodes[0];
+                    container.innerHTML = `
+                        <div class="verification-code-display">
+                            <span class="badge bg-success me-1">${primaryCode}</span>
+                            <button class="btn btn-sm btn-outline-secondary copy-code-btn"
+                                    onclick="copyVerificationCode('${primaryCode}')"
+                                    title="复制验证码">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<span class="text-muted small">无验证码</span>';
+                }
+            } else {
+                container.innerHTML = '<span class="text-muted small">无验证码</span>';
+            }
+        } catch (error) {
+            console.error('Failed to load verification code for email', email.id, error);
+            container.innerHTML = '<span class="text-muted small">检测失败</span>';
+        }
+    }
+}
+
+// 复制验证码到剪贴板
+async function copyVerificationCode(code) {
+    try {
+        await navigator.clipboard.writeText(code);
+        showToast('验证码已复制到剪贴板: ' + code, 'success');
+    } catch (error) {
+        console.error('Failed to copy verification code:', error);
+        const textArea = document.createElement('textarea');
+        textArea.value = code;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showToast('验证码已复制到剪贴板: ' + code, 'success');
+    }
+}
+
+// 显示提示消息
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 3000);
+}
+
+// 统一的提示函数
+function showAlert(message) {
+    document.getElementById('alertMessage').textContent = message;
+    const toast = new bootstrap.Toast(document.getElementById('alertToast'));
+    toast.show();
+}
+</script>
+
+<!-- 全局提示框 -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="alertToast" class="toast" role="alert">
+        <div class="toast-header">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong class="me-auto">系统提示</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="alertMessage">
+        </div>
+    </div>
+</div>
+</body>
+</html>

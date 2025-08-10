@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户注册 - {{.site_name}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="1" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="1" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="1" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+        }
+
+        .register-container {
+            position: relative;
+            z-index: 1;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-control,
+        .form-select {
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        .input-group-text {
+            border: 2px solid #e9ecef;
+            border-radius: 12px 0 0 12px;
+            background: #f8f9fa;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 12px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-outline-primary {
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            color: #667eea;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-outline-primary:hover {
+            background: #667eea;
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .floating-icons {
+            position: absolute;
+            animation: float 6s ease-in-out infinite;
+            opacity: 0.1;
+            color: white;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px) rotate(0deg);
+            }
+
+            50% {
+                transform: translateY(-20px) rotate(10deg);
+            }
+        }
+
+        .alert-info {
+            border-radius: 12px;
+            border: 2px solid rgba(13, 202, 240, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 浮动图标 -->
+    <div class="floating-icons" style="top: 10%; left: 10%; font-size: 3rem; animation-delay: 0s;">
+        <i class="bi bi-person-plus"></i>
+    </div>
+    <div class="floating-icons" style="top: 20%; right: 15%; font-size: 2.5rem; animation-delay: -2s;">
+        <i class="bi bi-envelope-plus"></i>
+    </div>
+    <div class="floating-icons" style="bottom: 30%; left: 20%; font-size: 2rem; animation-delay: -4s;">
+        <i class="bi bi-shield-plus"></i>
+    </div>
+    <div class="floating-icons" style="bottom: 20%; right: 10%; font-size: 2.8rem; animation-delay: -1s;">
+        <i class="bi bi-check-circle"></i>
+    </div>
+
+    <div class="container-fluid register-container min-vh-100 d-flex align-items-center">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-md-8 col-lg-6">
+                    <div class="card shadow">
+                        <div class="card-body p-5">
+                            <div class="text-center mb-4">
+                                {{if .site_logo}}
+                                <img src="{{.site_logo}}" alt="{{.site_name}}"
+                                    style="max-width: 120px; max-height: 60px; margin-bottom: 16px;">
+                                {{else}}
+                                <i class="bi bi-person-plus-fill text-primary" style="font-size: 3rem;"></i>
+                                {{end}}
+                                <h3 class="mt-3">用户注册</h3>
+                                <p class="text-muted">创建您的{{.site_name}}账户</p>
+                            </div>
+
+                            <form id="registerForm">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="username" class="form-label">用户名</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">
+                                                    <i class="bi bi-person"></i>
+                                                </span>
+                                                <input type="text" class="form-control" id="username" name="username"
+                                                    required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="email" class="form-label">邮箱地址</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">
+                                                    <i class="bi bi-envelope"></i>
+                                                </span>
+                                                <input type="email" class="form-control" id="email" name="email"
+                                                    required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="password" class="form-label">密码</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">
+                                                    <i class="bi bi-lock"></i>
+                                                </span>
+                                                <input type="password" class="form-control" id="password"
+                                                    name="password" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="confirmPassword" class="form-label">确认密码</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">
+                                                    <i class="bi bi-lock-fill"></i>
+                                                </span>
+                                                <input type="password" class="form-control" id="confirmPassword"
+                                                    name="confirmPassword" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="domainPrefix" class="form-label">邮箱前缀</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">
+                                                    <i class="bi bi-at"></i>
+                                                </span>
+                                                <input type="text" class="form-control" id="domainPrefix"
+                                                    name="domainPrefix" placeholder="例如: myname" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="domainId" class="form-label">选择域名</label>
+                                            <select class="form-select" id="domainId" name="domainId" required>
+                                                <option value="">请选择域名</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="inviteCode" class="form-label">邀请码 <small
+                                            class="text-muted">(可选)</small></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="bi bi-gift"></i>
+                                        </span>
+                                        <input type="text" class="form-control" id="inviteCode" name="inviteCode"
+                                            placeholder="输入邀请码可获得贡献度奖励">
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="alert alert-info">
+                                        <i class="bi bi-info-circle me-2"></i>
+                                        <strong>邮箱预览:</strong> <span id="emailPreview">请先填写邮箱前缀和选择域名</span>
+                                    </div>
+                                </div>
+
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="bi bi-person-plus me-2"></i>
+                                        注册账户
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div class="text-center mt-4">
+                                <p class="mb-2">已有账户？</p>
+                                <a href="/login" class="btn btn-outline-primary">
+                                    <i class="bi bi-box-arrow-in-right me-2"></i>
+                                    立即登录
+                                </a>
+                            </div>
+
+                            <div class="text-center mt-3">
+                                <a href="/" class="text-muted small">
+                                    <i class="bi bi-house me-1"></i>
+                                    返回首页
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载提示 -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3 mb-0">正在注册...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        let availableDomains = [];
+
+        // 页面加载时获取可用域名
+        document.addEventListener('DOMContentLoaded', async function () {
+            try {
+                const response = await axios.get('/api/domains/available');
+                if (response.data.success) {
+                    availableDomains = response.data.data;
+                    const domainSelect = document.getElementById('domainId');
+
+                    availableDomains.forEach(domain => {
+                        const option = document.createElement('option');
+                        option.value = domain.id;
+                        option.textContent = domain.name;
+                        domainSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load domains:', error);
+                showAlert('加载域名列表失败', 'warning');
+            }
+        });
+
+        // 更新邮箱预览
+        function updateEmailPreview() {
+            const prefix = document.getElementById('domainPrefix').value;
+            const domainId = document.getElementById('domainId').value;
+            const preview = document.getElementById('emailPreview');
+
+            if (prefix && domainId) {
+                const domain = availableDomains.find(d => d.id == domainId);
+                if (domain) {
+                    preview.textContent = `${prefix}@${domain.name}`;
+                    preview.className = 'text-success fw-bold';
+                }
+            } else {
+                preview.textContent = '请先填写邮箱前缀和选择域名';
+                preview.className = '';
+            }
+        }
+
+        // 监听输入变化
+        document.getElementById('domainPrefix').addEventListener('input', updateEmailPreview);
+        document.getElementById('domainId').addEventListener('change', updateEmailPreview);
+
+        // 表单提交
+        document.getElementById('registerForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+
+            // 验证密码
+            if (data.password !== data.confirmPassword) {
+                showAlert('两次输入的密码不一致', 'warning');
+                return;
+            }
+
+            if (data.password.length < 6) {
+                showAlert('密码长度至少6位', 'warning');
+                return;
+            }
+
+            // 验证邮箱前缀
+            if (!/^[a-zA-Z0-9._-]+$/.test(data.domainPrefix)) {
+                showAlert('邮箱前缀只能包含字母、数字、点、横线和下划线', 'warning');
+                return;
+            }
+
+            // 显示加载提示
+            const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+            loadingModal.show();
+
+            try {
+                const response = await axios.post('/api/register', {
+                    username: data.username,
+                    password: data.password,
+                    email: data.email,
+                    domain_prefix: data.domainPrefix,
+                    domain_id: parseInt(data.domainId),
+                    invite_code: data.inviteCode || ''
+                });
+
+                if (response.data.success) {
+                    showAlert('注册成功！请登录您的账户', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                } else {
+                    showAlert(response.data.message || '注册失败', 'danger');
+                }
+            } catch (error) {
+                console.error('Register error:', error);
+                if (error.response && error.response.data) {
+                    showAlert(error.response.data.message || '注册失败', 'danger');
+                } else {
+                    showAlert('网络错误，请稍后重试', 'danger');
+                }
+            } finally {
+                loadingModal.hide();
+            }
+        });
+
+        function showAlert(message, type) {
+            document.getElementById('alertMessage').textContent = message;
+            const toast = new bootstrap.Toast(document.getElementById('alertToast'));
+            toast.show();
+        }
+    </script>
+
+    <!-- 全局提示框 -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="alertToast" class="toast" role="alert">
+            <div class="toast-header">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong class="me-auto">系统提示</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="alertMessage">
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

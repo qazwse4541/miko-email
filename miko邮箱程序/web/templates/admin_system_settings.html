@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统设置 - {{.site_name}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-radius: 0 20px 20px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar .nav-link {
+            color: #667eea !important;
+            border-radius: 12px;
+            margin: 0.25rem 0;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background: linear-gradient(45deg, #667eea, #764ba2) !important;
+            color: white !important;
+            transform: translateX(5px);
+        }
+
+        .main-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px 0 0 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .btn {
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+        }
+
+        .form-control,
+        .form-select {
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        .nav-tabs .nav-link {
+            border-radius: 12px 12px 0 0;
+            border: none;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .nav-tabs .nav-link.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .tab-content {
+            background: white;
+            border-radius: 0 15px 15px 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .badge {
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row min-vh-100">
+            <!-- 侧边栏 -->
+            <div class="col-md-3 col-lg-2 sidebar">
+                <div class="d-flex flex-column h-100 p-3 text-dark">
+                    <a href="/admin/dashboard"
+                        class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none">
+                        {{if .site_logo}}
+                        <img src="{{.site_logo}}" alt="{{.site_name}}" style="height: 32px; margin-right: 8px;">
+                        {{else}}
+                        <i class="bi bi-shield-check me-2 text-primary"></i>
+                        {{end}}
+                        <span class="fs-4 fw-bold text-primary">{{.site_name}}管理</span>
+                    </a>
+                    <hr>
+                    <ul class="nav nav-pills flex-column mb-auto">
+                        <li class="nav-item">
+                            <a href="/admin/dashboard" class="nav-link">
+                                <i class="bi bi-speedometer2 me-2"></i>
+                                仪表板
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/admin/users" class="nav-link">
+                                <i class="bi bi-people me-2"></i>
+                                用户管理
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/admin/mailboxes" class="nav-link">
+                                <i class="bi bi-envelope me-2"></i>
+                                邮箱管理
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/admin/domains" class="nav-link">
+                                <i class="bi bi-globe me-2"></i>
+                                域名管理
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/admin/system-settings" class="nav-link active">
+                                <i class="bi bi-gear me-2"></i>
+                                系统设置
+                            </a>
+                        </li>
+                    </ul>
+                    <hr>
+                    <div class="dropdown">
+                        <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle text-primary"
+                            id="dropdownUser1" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-2"></i>
+                            <strong>管理员</strong>
+                        </a>
+                        <ul class="dropdown-menu shadow">
+                            <li><a class="dropdown-item" href="/settings">个人设置</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item" href="#" onclick="logout()">退出登录</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主内容区 -->
+            <div class="col-md-9 col-lg-10 main-content">
+                <div class="container-fluid p-4"></div>
+                <div
+                    class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">系统设置</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <button type="button" class="btn btn-outline-secondary" onclick="location.reload()">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            刷新
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 设置选项卡 -->
+                <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic"
+                            type="button" role="tab">
+                            <i class="bi bi-info-circle"></i>
+                            基本设置
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="admin-tab" data-bs-toggle="tab" data-bs-target="#admin"
+                            type="button" role="tab">
+                            <i class="bi bi-person-gear"></i>
+                            管理员设置
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="smtp-tab" data-bs-toggle="tab" data-bs-target="#smtp" type="button"
+                            role="tab">
+                            <i class="bi bi-envelope-at"></i>
+                            邮件设置
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="maintenance-tab" data-bs-toggle="tab" data-bs-target="#maintenance"
+                            type="button" role="tab">
+                            <i class="bi bi-tools"></i>
+                            维护模式
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="settingsTabContent">
+                    <!-- 基本设置 -->
+                    <div class="tab-pane fade show active" id="basic" role="tabpanel">
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">网站基本信息</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="basicSettingsForm">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="siteName" class="form-label">网站名称</label>
+                                                <input type="text" class="form-control" id="siteName" name="site_name"
+                                                    required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="contactEmail" class="form-label">联系邮箱</label>
+                                                <input type="email" class="form-control" id="contactEmail"
+                                                    name="contact_email">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="siteDescription" class="form-label">网站描述</label>
+                                        <textarea class="form-control" id="siteDescription" name="site_description"
+                                            rows="3"></textarea>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="siteKeywords" class="form-label">网站关键词</label>
+                                        <input type="text" class="form-control" id="siteKeywords" name="site_keywords"
+                                            placeholder="用逗号分隔">
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="copyright" class="form-label">版权信息</label>
+                                        <input type="text" class="form-control" id="copyright" name="copyright">
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="logoFile" class="form-label">网站Logo</label>
+                                                <input type="file" class="form-control" id="logoFile" accept="image/*">
+                                                <div class="form-text">支持 JPG、PNG、GIF 格式，最大2MB</div>
+                                            </div>
+                                            <div id="logoPreview" class="mb-3" style="display: none;">
+                                                <img id="logoImage" src="" alt="Logo预览"
+                                                    style="max-width: 200px; max-height: 100px;">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="defaultQuota" class="form-label">默认邮箱配额 (MB)</label>
+                                                <input type="number" class="form-control" id="defaultQuota"
+                                                    name="default_mailbox_quota" min="100" max="10000">
+                                            </div>
+                                            <div class="mb-3 form-check">
+                                                <input type="checkbox" class="form-check-input"
+                                                    id="allowSelfRegistration" name="allow_self_registration">
+                                                <label class="form-check-label" for="allowSelfRegistration">
+                                                    允许用户自助注册
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check-circle"></i>
+                                        保存基本设置
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 管理员设置 -->
+                    <div class="tab-pane fade" id="admin" role="tabpanel">
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">管理员账户设置</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>当前管理员信息</h6>
+                                        <div id="adminInfo">
+                                            <p><strong>用户名：</strong><span id="adminUsername">-</span></p>
+                                            <p><strong>邮箱：</strong><span id="adminEmail">-</span></p>
+                                            <p><strong>状态：</strong><span id="adminStatus">-</span></p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>修改管理员密码</h6>
+                                        <form id="adminPasswordForm">
+                                            <div class="mb-3">
+                                                <label for="currentPassword" class="form-label">当前密码</label>
+                                                <input type="password" class="form-control" id="currentPassword"
+                                                    name="current_password" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="newPassword" class="form-label">新密码</label>
+                                                <input type="password" class="form-control" id="newPassword"
+                                                    name="new_password" required minlength="6">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="confirmPassword" class="form-label">确认新密码</label>
+                                                <input type="password" class="form-control" id="confirmPassword"
+                                                    name="confirm_password" required>
+                                            </div>
+                                            <button type="submit" class="btn btn-warning">
+                                                <i class="bi bi-key"></i>
+                                                修改密码
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SMTP设置 -->
+                    <div class="tab-pane fade" id="smtp" role="tabpanel">
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">SMTP邮件发送设置</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="smtpSettingsForm">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="smtpHost" class="form-label">SMTP服务器</label>
+                                                <input type="text" class="form-control" id="smtpHost" name="host"
+                                                    required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="smtpPort" class="form-label">端口</label>
+                                                <input type="number" class="form-control" id="smtpPort" name="port"
+                                                    required>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="smtpUsername" class="form-label">用户名</label>
+                                                <input type="text" class="form-control" id="smtpUsername"
+                                                    name="username" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="smtpPassword" class="form-label">密码</label>
+                                                <input type="password" class="form-control" id="smtpPassword"
+                                                    name="password" required>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="smtpSecure" class="form-label">加密方式</label>
+                                                <select class="form-select" id="smtpSecure" name="secure" required>
+                                                    <option value="ssl">SSL</option>
+                                                    <option value="tls">TLS</option>
+                                                    <option value="none">无加密</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="smtpFromName" class="form-label">发件人名称</label>
+                                                <input type="text" class="form-control" id="smtpFromName"
+                                                    name="from_name" required>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="btn-group" role="group">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-check-circle"></i>
+                                            保存SMTP设置
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary"
+                                            onclick="testSMTPSettings()">
+                                            <i class="bi bi-send"></i>
+                                            测试连接
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 维护模式 -->
+                    <div class="tab-pane fade" id="maintenance" role="tabpanel">
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">系统维护模式</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="maintenanceForm">
+                                    <div class="mb-3 form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="maintenanceMode"
+                                            name="maintenance_mode">
+                                        <label class="form-check-label" for="maintenanceMode">
+                                            启用维护模式
+                                        </label>
+                                        <div class="form-text">启用后，普通用户将无法访问系统</div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="maintenanceMessage" class="form-label">维护提示信息</label>
+                                        <textarea class="form-control" id="maintenanceMessage"
+                                            name="maintenance_message" rows="3" placeholder="系统正在维护中，请稍后访问"></textarea>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-warning">
+                                        <i class="bi bi-tools"></i>
+                                        更新维护设置
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        // 页面加载时获取设置
+        document.addEventListener('DOMContentLoaded', function () {
+            loadSystemSettings();
+            loadAdminSettings();
+            loadSMTPSettings();
+        });
+
+        // 加载系统设置
+        async function loadSystemSettings() {
+            try {
+                const response = await axios.get('/api/admin/system/settings');
+                if (response.data.success) {
+                    const data = response.data.data;
+                    document.getElementById('siteName').value = data.site_name || '';
+                    document.getElementById('contactEmail').value = data.contact_email || '';
+                    document.getElementById('siteDescription').value = data.site_description || '';
+                    document.getElementById('siteKeywords').value = data.site_keywords || '';
+                    document.getElementById('copyright').value = data.copyright || '';
+                    document.getElementById('defaultQuota').value = data.default_mailbox_quota || 1000;
+                    document.getElementById('allowSelfRegistration').checked = data.allow_self_registration || false;
+
+                    // 加载维护模式设置
+                    document.getElementById('maintenanceMode').checked = data.maintenance_mode || false;
+                    document.getElementById('maintenanceMessage').value = data.maintenance_message || '系统正在维护中，请稍后访问';
+
+                    // 显示Logo预览
+                    if (data.site_logo) {
+                        document.getElementById('logoImage').src = data.site_logo;
+                        document.getElementById('logoPreview').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('加载系统设置失败:', error);
+            }
+        }
+
+        // 加载管理员设置
+        async function loadAdminSettings() {
+            try {
+                const response = await axios.get('/api/admin/system/admin-settings');
+                if (response.data.success) {
+                    const data = response.data.data;
+                    document.getElementById('adminUsername').textContent = data.username || '-';
+                    document.getElementById('adminEmail').textContent = data.email || '-';
+                    document.getElementById('adminStatus').textContent = data.enabled ? '启用' : '禁用';
+                }
+            } catch (error) {
+                console.error('加载管理员设置失败:', error);
+            }
+        }
+
+        // 加载SMTP设置
+        async function loadSMTPSettings() {
+            try {
+                const response = await axios.get('/api/admin/system/smtp-settings');
+                if (response.data.success) {
+                    const data = response.data.data;
+                    document.getElementById('smtpHost').value = data.host || '';
+                    document.getElementById('smtpPort').value = data.port || 587;
+                    document.getElementById('smtpUsername').value = data.username || '';
+                    document.getElementById('smtpPassword').value = data.password || '';
+                    document.getElementById('smtpSecure').value = data.secure || 'tls';
+                    document.getElementById('smtpFromName').value = data.from_name || '';
+                }
+            } catch (error) {
+                console.error('加载SMTP设置失败:', error);
+            }
+        }
+
+        // 保存基本设置
+        document.getElementById('basicSettingsForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            console.log('基本设置表单提交');
+
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            data.allow_self_registration = document.getElementById('allowSelfRegistration').checked;
+            data.default_mailbox_quota = parseInt(data.default_mailbox_quota);
+
+            console.log('发送数据:', data);
+
+            try {
+                showAlert('正在保存设置...', 'info');
+                const response = await axios.put('/api/admin/system/settings', data);
+                console.log('响应:', response);
+                
+                if (response.data.success) {
+                    showAlert('基本设置保存成功！', 'success');
+                } else {
+                    showAlert(response.data.message || '保存失败', 'danger');
+                }
+            } catch (error) {
+                console.error('保存错误:', error);
+                showAlert('保存失败: ' + (error.response?.data?.message || error.message), 'danger');
+            }
+        });
+
+        // 修改管理员密码
+        document.getElementById('adminPasswordForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+
+            if (data.new_password !== data.confirm_password) {
+                showAlert('新密码和确认密码不一致', 'warning');
+                return;
+            }
+
+            try {
+                const response = await axios.put('/api/admin/system/admin-password', data);
+                if (response.data.success) {
+                    showAlert('管理员密码修改成功', 'success');
+                    this.reset();
+                } else {
+                    showAlert(response.data.message || '修改失败', 'danger');
+                }
+            } catch (error) {
+                showAlert('修改失败: ' + (error.response?.data?.message || error.message), 'danger');
+            }
+        });
+
+        // 保存维护模式设置
+        document.getElementById('maintenanceForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            // 获取当前的系统设置
+            try {
+                const currentResponse = await axios.get('/api/admin/system/settings');
+                if (!currentResponse.data.success) {
+                    showAlert('获取当前设置失败', 'danger');
+                    return;
+                }
+
+                const currentData = currentResponse.data.data;
+
+                // 构建完整的系统设置数据，只更新维护模式相关字段
+                const data = {
+                    site_name: currentData.site_name,
+                    site_logo: currentData.site_logo || '',
+                    site_description: currentData.site_description || '',
+                    site_keywords: currentData.site_keywords || '',
+                    copyright: currentData.copyright || '',
+                    contact_email: currentData.contact_email || '',
+                    allow_self_registration: currentData.allow_self_registration,
+                    default_mailbox_quota: currentData.default_mailbox_quota,
+                    maintenance_mode: document.getElementById('maintenanceMode').checked,
+                    maintenance_message: document.getElementById('maintenanceMessage').value || '系统正在维护中，请稍后访问'
+                };
+
+                const response = await axios.put('/api/admin/system/settings', data);
+                if (response.data.success) {
+                    showAlert('维护模式设置保存成功', 'success');
+                } else {
+                    showAlert(response.data.message || '保存失败', 'danger');
+                }
+            } catch (error) {
+                showAlert('保存失败: ' + (error.response?.data?.message || error.message), 'danger');
+            }
+        });
+
+        // 保存SMTP设置
+        document.getElementById('smtpSettingsForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            data.port = parseInt(data.port);
+
+            try {
+                const response = await axios.put('/api/admin/system/smtp-settings', data);
+                if (response.data.success) {
+                    showAlert('SMTP设置保存成功', 'success');
+                } else {
+                    showAlert(response.data.message || '保存失败', 'danger');
+                }
+            } catch (error) {
+                showAlert('保存失败: ' + (error.response?.data?.message || error.message), 'danger');
+            }
+        });
+
+        // 测试SMTP设置
+        async function testSMTPSettings() {
+            const formData = new FormData(document.getElementById('smtpSettingsForm'));
+            const data = Object.fromEntries(formData.entries());
+            data.port = parseInt(data.port);
+
+            try {
+                const response = await axios.post('/api/admin/system/test-smtp', data);
+                if (response.data.success) {
+                    showAlert('SMTP连接测试成功', 'success');
+                } else {
+                    showAlert(response.data.message || '测试失败', 'danger');
+                }
+            } catch (error) {
+                showAlert('测试失败: ' + (error.response?.data?.message || error.message), 'danger');
+            }
+        }
+
+        // Logo文件上传
+        document.getElementById('logoFile').addEventListener('change', async function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('logo', file);
+
+            try {
+                const response = await axios.post('/api/admin/system/upload-logo', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+
+                if (response.data.success) {
+                    const logoPath = response.data.data.logo_path;
+                    document.getElementById('logoImage').src = logoPath;
+                    document.getElementById('logoPreview').style.display = 'block';
+
+                    // 更新隐藏的logo路径字段
+                    let logoInput = document.getElementById('siteLogo');
+                    if (!logoInput) {
+                        logoInput = document.createElement('input');
+                        logoInput.type = 'hidden';
+                        logoInput.id = 'siteLogo';
+                        logoInput.name = 'site_logo';
+                        document.getElementById('basicSettingsForm').appendChild(logoInput);
+                    }
+                    logoInput.value = logoPath;
+
+                    showAlert('Logo上传成功', 'success');
+                } else {
+                    showAlert(response.data.message || '上传失败', 'danger');
+                }
+            } catch (error) {
+                showAlert('上传失败: ' + (error.response?.data?.message || error.message), 'danger');
+            }
+        });
+
+        // 显示提示信息
+        function showAlert(message, type) {
+            document.getElementById('alertMessage').textContent = message;
+            const toast = new bootstrap.Toast(document.getElementById('alertToast'));
+            toast.show();
+        }
+
+        // 退出登录
+        function logout() {
+            if (confirm('确定要退出登录吗？')) {
+                axios.post('/api/logout').then(() => {
+                    window.location.href = '/admin/login';
+                }).catch(() => {
+                    window.location.href = '/admin/login';
+                });
+            }
+        }
+    </script>
+
+    <!-- 全局提示框 -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="alertToast" class="toast" role="alert">
+            <div class="toast-header">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong class="me-auto">系统提示</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="alertMessage">
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
