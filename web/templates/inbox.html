@@ -295,6 +295,9 @@
                 <button type="button" class="btn btn-primary" onclick="replyEmail()">
                     <i class="bi bi-reply"></i> 回复
                 </button>
+                <button type="button" class="btn btn-outline-primary" onclick="forwardEmail()">
+                    <i class="bi bi-arrow-right"></i> 转发
+                </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
             </div>
         </div>
@@ -527,6 +530,20 @@ function replyEmail() {
         to: selectedEmail.from_addr,
         subject: replySubject,
         reply_to: selectedEmail.id
+    });
+
+    window.location.href = `/compose?${params.toString()}`;
+}
+
+function forwardEmail() {
+    if (!selectedEmail) return;
+
+    const forwardSubject = selectedEmail.subject.startsWith('Fwd: ') ?
+        selectedEmail.subject : 'Fwd: ' + selectedEmail.subject;
+
+    const params = new URLSearchParams({
+        subject: forwardSubject,
+        forward: selectedEmail.id
     });
 
     window.location.href = `/compose?${params.toString()}`;
