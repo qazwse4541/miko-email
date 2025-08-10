@@ -1,0 +1,71 @@
+name: Build
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # 主要平台构建测试
+          - goos: windows
+            goarch: amd64
+            output: mikomail-windows-amd64.exe
+          - goos: linux
+            goarch: amd64
+            output: mikomail-linux-amd64
+          - goos: darwin
+            goarch: amd64
+            output: mikomail-darwin-amd64
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Run tests
+      run: go test -v ./...
+
+    - name: Build binary
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: 0
+      run: |
+        echo "Building for ${{ matrix.goos }}/${{ matrix.goarch }}"
+        go build -ldflags="-s -w" -o ${{ matrix.output }} .
+        
+        # 验证构建结果
+        if [ "${{ matrix.goos }}" = "linux" ]; then
+          file ${{ matrix.output }}
+          chmod +x ${{ matrix.output }}
+        fi
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: mikomail-${{ matrix.goos }}-${{ matrix.goarch }}
+        path: ${{ matrix.output }}
+        retention-days: 7
