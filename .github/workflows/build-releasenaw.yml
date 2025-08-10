@@ -56,12 +56,12 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: '1.21'  # 根据您的项目需要调整Go版本
 
     - name: Cache Go modules
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -96,7 +96,7 @@ jobs:
         fi
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: mikomail-${{ matrix.goos }}-${{ matrix.goarch }}
         path: |
@@ -114,42 +114,34 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: ./artifacts
 
     - name: Display structure of downloaded files
       run: ls -la ./artifacts/
 
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref_name }}
-        release_name: Release ${{ github.ref_name }}
-        body: |
-          ## Miko Email Server ${{ github.ref_name }}
-          
+    - name: Create Release and Upload Assets
+      run: |
+        # 创建 Release
+        gh release create ${{ github.ref_name }} \
+          --title "Release ${{ github.ref_name }}" \
+          --notes "## Miko Email Server ${{ github.ref_name }}
+
           ### 下载说明
-          - Windows 用户请下载 `mikomail-windows-amd64.exe`
-          - Linux 用户请下载 `mikomail-linux-amd64`
-          - macOS Intel 用户请下载 `mikomail-darwin-amd64`
-          - macOS Apple Silicon 用户请下载 `mikomail-darwin-arm64`
-          
+          - Windows 用户请下载 \`mikomail-windows-amd64.exe\`
+          - Linux 用户请下载 \`mikomail-linux-amd64\`
+          - macOS Intel 用户请下载 \`mikomail-darwin-amd64\`
+          - macOS Apple Silicon 用户请下载 \`mikomail-darwin-arm64\`
+
           ### 使用方法
           1. 下载对应平台的执行文件
-          2. 给文件添加执行权限（Linux/macOS）: `chmod +x mikomail-*`
-          3. 运行程序: `./mikomail-*`
-          
-          ### 更新内容
-          请查看 [CHANGELOG.md](CHANGELOG.md) 了解详细更新内容。
-        draft: false
-        prerelease: false
+          2. 给文件添加执行权限（Linux/macOS）: \`chmod +x mikomail-*\`
+          3. 运行程序: \`./mikomail-*\`
 
-    - name: Upload Release Assets
-      run: |
+          ### 更新内容
+          请查看 [CHANGELOG.md](CHANGELOG.md) 了解详细更新内容。"
+
         # 上传所有构建的文件到 Release
         for dir in ./artifacts/*/; do
           for file in "$dir"*; do
