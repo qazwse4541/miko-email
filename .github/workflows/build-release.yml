@@ -6,6 +6,10 @@ on:
       - 'v*'  # 当推送标签时触发，如 v1.0.0
   workflow_dispatch:  # 允许手动触发
 
+permissions:
+  contents: write  # 需要写权限来创建 release
+  actions: read    # 需要读权限来下载 artifacts
+
 jobs:
   build:
     name: Build for multiple platforms
