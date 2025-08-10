@@ -1,0 +1,163 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送标签时触发，如 v1.0.0
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    name: Build for multiple platforms
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # Windows builds
+          - goos: windows
+            goarch: amd64
+            output: mikomail-windows-amd64.exe
+          - goos: windows
+            goarch: 386
+            output: mikomail-windows-386.exe
+          - goos: windows
+            goarch: arm64
+            output: mikomail-windows-arm64.exe
+          
+          # Linux builds
+          - goos: linux
+            goarch: amd64
+            output: mikomail-linux-amd64
+          - goos: linux
+            goarch: 386
+            output: mikomail-linux-386
+          - goos: linux
+            goarch: arm64
+            output: mikomail-linux-arm64
+          - goos: linux
+            goarch: arm
+            output: mikomail-linux-arm
+          
+          # macOS builds
+          - goos: darwin
+            goarch: amd64
+            output: mikomail-darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            output: mikomail-darwin-arm64
+          
+          # FreeBSD builds
+          - goos: freebsd
+            goarch: amd64
+            output: mikomail-freebsd-amd64
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'  # 根据您的项目需要调整Go版本
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Build binary
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: 0
+      run: |
+        echo "Building for ${{ matrix.goos }}/${{ matrix.goarch }}"
+        go build -ldflags="-s -w" -o ${{ matrix.output }} .
+        
+        # 为 Linux/macOS/FreeBSD 添加执行权限
+        if [ "${{ matrix.goos }}" != "windows" ]; then
+          chmod +x ${{ matrix.output }}
+        fi
+
+    - name: Create archive
+      run: |
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          # Windows: 创建 ZIP 文件
+          zip -r ${{ matrix.output }}.zip ${{ matrix.output }} README.md LICENSE || true
+        else
+          # Unix-like: 创建 tar.gz 文件
+          tar -czf ${{ matrix.output }}.tar.gz ${{ matrix.output }} README.md LICENSE || true
+        fi
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: mikomail-${{ matrix.goos }}-${{ matrix.goarch }}
+        path: |
+          ${{ matrix.output }}*
+        retention-days: 30
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: ./artifacts
+
+    - name: Display structure of downloaded files
+      run: ls -la ./artifacts/
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: Release ${{ github.ref_name }}
+        body: |
+          ## Miko Email Server ${{ github.ref_name }}
+          
+          ### 下载说明
+          - Windows 用户请下载 `mikomail-windows-amd64.exe`
+          - Linux 用户请下载 `mikomail-linux-amd64`
+          - macOS Intel 用户请下载 `mikomail-darwin-amd64`
+          - macOS Apple Silicon 用户请下载 `mikomail-darwin-arm64`
+          
+          ### 使用方法
+          1. 下载对应平台的执行文件
+          2. 给文件添加执行权限（Linux/macOS）: `chmod +x mikomail-*`
+          3. 运行程序: `./mikomail-*`
+          
+          ### 更新内容
+          请查看 [CHANGELOG.md](CHANGELOG.md) 了解详细更新内容。
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Assets
+      run: |
+        # 上传所有构建的文件到 Release
+        for dir in ./artifacts/*/; do
+          for file in "$dir"*; do
+            if [ -f "$file" ]; then
+              echo "Uploading $file"
+              gh release upload ${{ github.ref_name }} "$file" --clobber
+            fi
+          done
+        done
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
