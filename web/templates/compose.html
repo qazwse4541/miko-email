@@ -556,18 +556,33 @@
 
                     // 填充表单字段
                     document.getElementById('fromEmail').value = draft.from_addr || '';
-                    document.getElementById('toEmail').value = draft.to_addr || '';
                     document.getElementById('subject').value = draft.subject || '';
 
-                    // 解析收件人地址，分离TO、CC、BCC
+                    // 解析收件人地址，正确分离TO、CC、BCC
                     if (draft.to_addr) {
-                        const addresses = draft.to_addr.split(',').map(addr => addr.trim());
-                        // 简单处理：第一个地址作为TO，其余的暂时也放在TO中
-                        // 实际应用中需要更复杂的逻辑来区分CC和BCC
+                        const addresses = draft.to_addr.split(',').map(addr => addr.trim()).filter(addr => addr);
+
+                        // 第一个地址作为主收件人
                         document.getElementById('toEmail').value = addresses[0] || '';
+
+                        // 如果有第二个地址，放到CC
                         if (addresses.length > 1) {
-                            document.getElementById('ccEmail').value = addresses.slice(1).join(', ');
+                            document.getElementById('ccEmail').value = addresses[1] || '';
+                        } else {
+                            document.getElementById('ccEmail').value = '';
                         }
+
+                        // 如果有第三个地址，放到BCC
+                        if (addresses.length > 2) {
+                            document.getElementById('bccEmail').value = addresses[2] || '';
+                        } else {
+                            document.getElementById('bccEmail').value = '';
+                        }
+                    } else {
+                        // 如果没有收件人数据，清空所有字段
+                        document.getElementById('toEmail').value = '';
+                        document.getElementById('ccEmail').value = '';
+                        document.getElementById('bccEmail').value = '';
                     }
 
                     // 设置邮件内容
