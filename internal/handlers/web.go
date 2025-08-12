@@ -168,6 +168,18 @@ func (h *WebHandler) MailboxesPage(c *gin.Context) {
 	})
 }
 
+// VerificationRulesPage 验证码规则设置页面
+func (h *WebHandler) VerificationRulesPage(c *gin.Context) {
+	username := c.GetString("username")
+	c.HTML(http.StatusOK, "verification_rules.html", gin.H{
+		"title":     "验证码规则设置",
+		"username":  username,
+		"site_name": config.GetSiteName(),
+		"site_logo": config.GetSiteLogo(),
+		"copyright": config.GetCopyright(),
+	})
+}
+
 // AdminDashboard 管理员仪表板
 func (h *WebHandler) AdminDashboard(c *gin.Context) {
 	username := c.GetString("username")

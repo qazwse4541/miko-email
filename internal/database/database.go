@@ -37,6 +37,10 @@ func Init(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to create default admin: %w", err)
 	}
 
+	if err := initDefaultVerificationRules(db); err != nil {
+		return nil, fmt.Errorf("failed to init default verification rules: %w", err)
+	}
+
 	return db, nil
 }
 
@@ -173,6 +177,19 @@ func createTables(db *sql.DB) error {
 			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 		)`,
 
+		// 验证码规则表
+		`CREATE TABLE IF NOT EXISTS verification_rules (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			description TEXT,
+			pattern TEXT NOT NULL,
+			type TEXT NOT NULL DEFAULT 'custom',
+			priority INTEGER DEFAULT 0,
+			enabled BOOLEAN DEFAULT 1,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+
 		// 创建索引
 		`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`,
 		`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`,
@@ -189,6 +206,9 @@ func createTables(db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_email_forwards_mailbox_id ON email_forwards(mailbox_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_email_forwards_source_email ON email_forwards(source_email)`,
 		`CREATE INDEX IF NOT EXISTS idx_email_forwards_enabled ON email_forwards(enabled)`,
+		`CREATE INDEX IF NOT EXISTS idx_verification_rules_type ON verification_rules(type)`,
+		`CREATE INDEX IF NOT EXISTS idx_verification_rules_enabled ON verification_rules(enabled)`,
+		`CREATE INDEX IF NOT EXISTS idx_verification_rules_priority ON verification_rules(priority)`,
 	}
 
 	for _, query := range queries {
@@ -292,6 +312,79 @@ func addPasswordResetFields(db *sql.DB) error {
 			if _, err := db.Exec(migration); err != nil {
 				return fmt.Errorf("failed to execute migration: %s, error: %w", migration, err)
 			}
+		}
+	}
+
+	return nil
+}
+
+// initDefaultVerificationRules 初始化默认验证码规则
+func initDefaultVerificationRules(db *sql.DB) error {
+	// 检查是否已经初始化过
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM verification_rules WHERE type = 'default'").Scan(&count)
+	if err != nil {
+		return fmt.Errorf("检查默认验证码规则失败: %v", err)
+	}
+
+	if count > 0 {
+		return nil // 已经初始化过
+	}
+
+	// 默认验证码规则
+	defaultRules := []struct {
+		Name        string
+		Description string
+		Pattern     string
+		Priority    int
+	}{
+		{
+			Name:        "Telegram验证码",
+			Description: "Telegram官方验证码格式",
+			Pattern:     `Your code is:\s*([0-9]{6})`,
+			Priority:    1,
+		},
+		{
+			Name:        "中文验证码（基础）",
+			Description: "中文验证码基础格式",
+			Pattern:     `(?:验证码为|验证码是|验证码：|验证码: )([0-9A-Za-z]{4,8})`,
+			Priority:    2,
+		},
+		{
+			Name:        "安全代码",
+			Description: "安全代码格式",
+			Pattern:     `安全代码\s*[：:]\s*([0-9A-Za-z]{4,8})`,
+			Priority:    3,
+		},
+		{
+			Name:        "英文验证码",
+			Description: "英文验证码格式",
+			Pattern:     `(?i)(?:security code|verification code|code)[:：]\s*([0-9A-Za-z]{4,8})`,
+			Priority:    4,
+		},
+		{
+			Name:        "纯数字验证码",
+			Description: "纯数字验证码格式",
+			Pattern:     `验证码[：:]\s*([0-9]{4,8})`,
+			Priority:    5,
+		},
+		{
+			Name:        "通用数字验证码",
+			Description: "通用6位数字验证码",
+			Pattern:     `\b([0-9]{6})\b`,
+			Priority:    10,
+		},
+	}
+
+	// 插入默认规则
+	for _, rule := range defaultRules {
+		_, err := db.Exec(`
+			INSERT INTO verification_rules (name, description, pattern, type, priority, enabled, created_at, updated_at)
+			VALUES (?, ?, ?, 'default', ?, 1, ?, ?)
+		`, rule.Name, rule.Description, rule.Pattern, rule.Priority, time.Now(), time.Now())
+
+		if err != nil {
+			return fmt.Errorf("插入默认验证码规则失败: %v", err)
 		}
 	}
 

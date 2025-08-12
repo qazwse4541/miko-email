@@ -17,6 +17,7 @@ import (
 	"miko-email/internal/services/mail"
 	"miko-email/internal/services/mailbox"
 	"miko-email/internal/services/user"
+	"miko-email/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
@@ -30,6 +31,7 @@ type Server struct {
 	emailService         *email.Service
 	forwardService       *forward.Service
 	globalForwardService *global_forward.Service
+	verificationService  *services.VerificationService
 }
 
 func New(db *sql.DB, cfg *config.Config) *Server {
@@ -52,6 +54,9 @@ func New(db *sql.DB, cfg *config.Config) *Server {
 	// 创建全局转发服务
 	globalForwardService := global_forward.NewService(db)
 
+	// 创建验证码服务
+	verificationService := services.NewVerificationService(db)
+
 	server := &Server{
 		router:               gin.Default(),
 		db:                   db,
@@ -60,6 +65,7 @@ func New(db *sql.DB, cfg *config.Config) *Server {
 		emailService:         emailService,
 		forwardService:       forwardService,
 		globalForwardService: globalForwardService,
+		verificationService:  verificationService,
 	}
 
 	server.setupRoutes()
@@ -122,9 +128,10 @@ func (s *Server) setupRoutes() {
 	mailboxHandler := handlers.NewMailboxHandler(mailboxService, s.sessionStore)
 	domainHandler := handlers.NewDomainHandler(domainService, dkimService, s.sessionStore)
 	userHandler := handlers.NewUserHandler(userService, s.sessionStore)
-	emailHandler := handlers.NewEmailHandler(s.emailService, mailboxService, s.forwardService, s.globalForwardService, s.sessionStore)
+	emailHandler := handlers.NewEmailHandler(s.emailService, mailboxService, s.forwardService, s.globalForwardService, s.verificationService, s.sessionStore)
 	webHandler := handlers.NewWebHandler(s.sessionStore)
 	systemHandler := handlers.NewSystemHandler(s.sessionStore, s.db)
+	verificationHandler := handlers.NewVerificationHandler(s.verificationService, s.sessionStore)
 
 	// 中间件
 	authMiddleware := middleware.NewAuthMiddleware(s.sessionStore)
@@ -157,6 +164,7 @@ func (s *Server) setupRoutes() {
 			webAuth.GET("/sent", webHandler.SentPage)
 			webAuth.GET("/drafts", webHandler.DraftsPage)
 			webAuth.GET("/settings", webHandler.SettingsPage)
+			webAuth.GET("/verification-rules", webHandler.VerificationRulesPage)
 			webAuth.GET("/mailboxes", webHandler.MailboxesPage)
 		}
 
@@ -206,6 +214,7 @@ func (s *Server) setupRoutes() {
 			apiAuth.POST("/emails/send", emailHandler.SendEmail)
 			apiAuth.DELETE("/emails/:id", emailHandler.DeleteEmail)
 			apiAuth.PUT("/emails/mark-all-read", emailHandler.MarkAllEmailsAsRead)
+			apiAuth.GET("/emails/verification-code", emailHandler.GetVerificationCode)
 
 			// 附件相关
 			apiAuth.GET("/attachments/:id", emailHandler.DownloadAttachment)
@@ -233,8 +242,13 @@ func (s *Server) setupRoutes() {
 			apiAuth.DELETE("/global-forward-rules/:id", emailHandler.DeleteGlobalForwardRule)
 			apiAuth.PATCH("/global-forward-rules/:id/toggle", emailHandler.ToggleGlobalForwardRule)
 
-			// 验证码提取
-			apiAuth.GET("/emails/verification-code", emailHandler.GetVerificationCode)
+			// 验证码规则管理
+			apiAuth.GET("/verification-rules", verificationHandler.GetRules)
+			apiAuth.POST("/verification-rules", verificationHandler.CreateRule)
+			apiAuth.PUT("/verification-rules/:id", verificationHandler.UpdateRule)
+			apiAuth.DELETE("/verification-rules/:id", verificationHandler.DeleteRule)
+			apiAuth.POST("/verification-rules/test", verificationHandler.TestRule)
+			apiAuth.POST("/verification-codes/extract", verificationHandler.ExtractCodes)
 		}
 
 		// 管理员API

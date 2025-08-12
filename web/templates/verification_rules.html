@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>验证码规则设置 - {{.site_name}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-radius: 0 20px 20px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .sidebar .nav-link {
+            color: #667eea !important;
+            border-radius: 12px;
+            margin: 0.25rem 0;
+            transition: all 0.3s ease;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background: linear-gradient(45deg, #667eea, #764ba2) !important;
+            color: white !important;
+            transform: translateX(5px);
+        }
+        .main-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px 0 0 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        .btn {
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .form-control, .form-select {
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .nav-tabs .nav-link {
+            border-radius: 12px 12px 0 0;
+            border: none;
+            color: #667eea;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+        .nav-tabs .nav-link.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+        .tab-content {
+            background: white;
+            border-radius: 0 15px 15px 15px;
+            padding: 2rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .rule-item {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 2px solid rgba(102, 126, 234, 0.1);
+            transition: all 0.3s ease;
+        }
+        .rule-item:hover {
+            border-color: rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+        .form-switch .form-check-input {
+            width: 3rem;
+            height: 1.5rem;
+        }
+        .form-switch .form-check-input:checked {
+            background-color: #667eea;
+            border-color: #667eea;
+        }
+        .btn-add-rule {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            border: none;
+            color: white;
+            padding: 0.75rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .btn-add-rule:hover {
+            background: linear-gradient(45deg, #20c997, #28a745);
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(40, 167, 69, 0.3);
+        }
+        .btn-test {
+            background: linear-gradient(45deg, #17a2b8, #6f42c1);
+            border: none;
+            color: white;
+        }
+        .btn-test:hover {
+            background: linear-gradient(45deg, #6f42c1, #17a2b8);
+            color: white;
+        }
+        .btn-edit {
+            background: linear-gradient(45deg, #ffc107, #fd7e14);
+            border: none;
+            color: white;
+        }
+        .btn-edit:hover {
+            background: linear-gradient(45deg, #fd7e14, #ffc107);
+            color: white;
+        }
+        .btn-delete {
+            background: linear-gradient(45deg, #dc3545, #e83e8c);
+            border: none;
+            color: white;
+        }
+        .btn-delete:hover {
+            background: linear-gradient(45deg, #e83e8c, #dc3545);
+            color: white;
+        }
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+        }
+        .regex-example {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+            padding: 0.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row min-vh-100">
+        <!-- 侧边栏 -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="d-flex flex-column h-100 p-3 text-dark">
+                <a href="/dashboard" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none">
+                    {{if .site_logo}}
+                        <img src="{{.site_logo}}" alt="{{.site_name}}" style="height: 32px; margin-right: 8px;">
+                    {{else}}
+                        <i class="bi bi-envelope-heart me-2 text-primary"></i>
+                    {{end}}
+                    <span class="fs-4 fw-bold text-primary">{{.site_name}}</span>
+                </a>
+                <hr>
+                <ul class="nav nav-pills flex-column mb-auto">
+                    <li class="nav-item">
+                        <a href="/dashboard" class="nav-link">
+                            <i class="bi bi-speedometer2 me-2"></i>
+                            仪表板
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/inbox" class="nav-link">
+                            <i class="bi bi-inbox me-2"></i>
+                            收件箱
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/sent" class="nav-link">
+                            <i class="bi bi-send me-2"></i>
+                            已发送
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/drafts" class="nav-link">
+                            <i class="bi bi-file-earmark-text me-2"></i>
+                            草稿箱
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/compose" class="nav-link">
+                            <i class="bi bi-pencil-square me-2"></i>
+                            写邮件
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/forward" class="nav-link">
+                            <i class="bi bi-arrow-right-circle me-2"></i>
+                            转邮件
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/verification-rules" class="nav-link active">
+                            <i class="bi bi-shield-check me-2"></i>
+                            验证码规则
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/mailboxes" class="nav-link">
+                            <i class="bi bi-collection me-2"></i>
+                            邮箱管理
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/settings" class="nav-link">
+                            <i class="bi bi-gear me-2"></i>
+                            设置
+                        </a>
+                    </li>
+                </ul>
+                <hr>
+                <div class="dropdown">
+                    <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle text-primary" id="dropdownUser1" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle me-2"></i>
+                        <strong id="navUsername">{{.username}}</strong>
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li><a class="dropdown-item" href="/settings">个人设置</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="logout()">退出登录</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="container-fluid p-4">
+                <!-- 页面标题 -->
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2 text-primary fw-bold">验证码规则设置</h1>
+                </div>
+
+                <!-- 标签页导航 -->
+                <ul class="nav nav-tabs" id="verificationTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="reception-tab" data-bs-toggle="tab" data-bs-target="#reception" type="button" role="tab">
+                            接待设置
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="rules-tab" data-bs-toggle="tab" data-bs-target="#rules" type="button" role="tab">
+                            验证码规则管理
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- 标签页内容 -->
+                <div class="tab-content" id="verificationTabContent">
+                    <!-- 接待设置 -->
+                    <div class="tab-pane fade show active" id="reception" role="tabpanel">
+                        <h5 class="mb-4 text-primary fw-bold">添加验证码提取规则</h5>
+                        <p class="text-muted mb-4">管理验证码提取规则，自定义规则优先级高于默认规则，规则创建时间同时执行。</p>
+                        
+                        <form id="addRuleForm">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="ruleName" class="form-label fw-bold">规则名称</label>
+                                    <input type="text" class="form-control" id="ruleName" placeholder="中文验证码（基础）" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="ruleType" class="form-label fw-bold">类型</label>
+                                    <select class="form-select" id="ruleType">
+                                        <option value="default">默认规则</option>
+                                        <option value="custom">自定义规则</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="ruleDescription" class="form-label fw-bold">规则描述</label>
+                                <input type="text" class="form-control" id="ruleDescription" placeholder="中文验证码基础格式">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="regexPattern" class="form-label fw-bold">正则表达式</label>
+                                <textarea class="form-control" id="regexPattern" rows="3" placeholder="(?:验证码为|验证码是|验证码：|验证码: )([0-9A-Za-z]{4,8})" required></textarea>
+                                <div class="form-text">
+                                    验证码与验证码描述，第一个括号内为验证码提取规则
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="testContent" class="form-label fw-bold">正则标本</label>
+                                <input type="text" class="form-control" id="testContent" placeholder="1">
+                                <div class="form-text">
+                                    测试标本: (1表示大写) (2表示小写) (3表示数字) (4表示特殊字符)
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="testExample" class="form-label fw-bold">测试内容</label>
+                                <textarea class="form-control" id="testExample" rows="4" placeholder="122323"></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">测试规则</label>
+                                <div>
+                                    <span class="badge bg-primary me-2">测试结果:</span>
+                                    <span class="badge bg-success">失败</span>
+                                </div>
+                            </div>
+                            
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="enableRule" checked>
+                                <label class="form-check-label fw-bold" for="enableRule">
+                                    启用此规则
+                                </label>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-add-rule">
+                                <i class="bi bi-plus-circle me-2"></i>
+                                添加规则
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- 验证码规则管理 -->
+                    <div class="tab-pane fade" id="rules" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div>
+                                <h5 class="text-primary fw-bold mb-2">验证码提取规则</h5>
+                                <p class="text-muted mb-0">管理验证码提取规则，自定义规则优先级高于默认规则，规则创建时间同时执行。</p>
+                            </div>
+                            <button class="btn btn-add-rule" onclick="showAddRuleModal()">
+                                <i class="bi bi-plus me-2"></i>
+                                添加规则
+                            </button>
+                        </div>
+
+                        <!-- 规则列表 -->
+                        <div id="rulesList">
+                            <!-- 规则将通过JavaScript动态加载 -->
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">加载中...</span>
+                                </div>
+                                <p class="mt-2 text-muted">正在加载验证码规则...</p>
+                            </div>
+                        </div>
+
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加规则模态框 -->
+<div class="modal fade" id="addRuleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加验证码规则</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="modalAddRuleForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="modalRuleName" class="form-label fw-bold">规则名称</label>
+                            <input type="text" class="form-control" id="modalRuleName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="modalRuleType" class="form-label fw-bold">类型</label>
+                            <select class="form-select" id="modalRuleType">
+                                <option value="default">默认规则</option>
+                                <option value="custom">自定义规则</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modalRuleDescription" class="form-label fw-bold">规则描述</label>
+                        <input type="text" class="form-control" id="modalRuleDescription">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modalRegexPattern" class="form-label fw-bold">正则表达式</label>
+                        <textarea class="form-control" id="modalRegexPattern" rows="3" required></textarea>
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="modalEnableRule" checked>
+                        <label class="form-check-label fw-bold" for="modalEnableRule">
+                            启用此规则
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-add-rule" onclick="saveRule()">保存规则</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑规则模态框 -->
+<div class="modal fade" id="editRuleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑验证码规则</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="modalEditRuleForm">
+                    <input type="hidden" id="editRuleId">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="editRuleName" class="form-label fw-bold">规则名称</label>
+                            <input type="text" class="form-control" id="editRuleName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editRuleType" class="form-label fw-bold">类型</label>
+                            <select class="form-select" id="editRuleType">
+                                <option value="default">默认规则</option>
+                                <option value="custom">自定义规则</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editRuleDescription" class="form-label fw-bold">规则描述</label>
+                        <input type="text" class="form-control" id="editRuleDescription">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editRegexPattern" class="form-label fw-bold">正则表达式</label>
+                        <textarea class="form-control" id="editRegexPattern" rows="3" required></textarea>
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="editEnableRule">
+                        <label class="form-check-label fw-bold" for="editEnableRule">
+                            启用此规则
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-edit" onclick="updateRule()">更新规则</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 测试规则模态框 -->
+<div class="modal fade" id="testRuleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">测试验证码规则</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="testRulePattern" class="form-label fw-bold">正则表达式</label>
+                    <textarea class="form-control" id="testRulePattern" rows="2" readonly></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label for="testContent" class="form-label fw-bold">测试内容</label>
+                    <textarea class="form-control" id="testContentArea" rows="4" placeholder="请输入要测试的文本内容"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">测试结果</label>
+                    <div id="testResult" class="p-3 border rounded">
+                        <span class="text-muted">请输入测试内容并点击测试按钮</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-test" onclick="runTest()">测试</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="/static/js/common.js"></script>
+<script>
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadNavUsername();
+    loadVerificationRules();
+});
+
+// 加载导航栏用户名
+async function loadNavUsername() {
+    try {
+        const response = await axios.get('/api/profile');
+        if (response.data.success) {
+            const user = response.data.data;
+            const navUsername = document.getElementById('navUsername');
+            if (navUsername && user.username) {
+                navUsername.textContent = user.username;
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load nav username:', error);
+    }
+}
+
+// 加载验证码规则
+async function loadVerificationRules() {
+    try {
+        const response = await axios.get('/api/verification-rules');
+        if (response.data.success) {
+            renderVerificationRules(response.data.data);
+        } else {
+            showAlert('加载验证码规则失败: ' + response.data.message);
+        }
+    } catch (error) {
+        console.error('Failed to load verification rules:', error);
+        showAlert('加载验证码规则失败');
+    }
+}
+
+// 渲染验证码规则列表
+function renderVerificationRules(rules) {
+    const rulesContainer = document.getElementById('rulesList');
+    if (!rulesContainer) return;
+
+    rulesContainer.innerHTML = '';
+
+    rules.forEach(rule => {
+        const ruleDiv = document.createElement('div');
+        ruleDiv.className = 'rule-item';
+        ruleDiv.innerHTML = `
+            <div class="row align-items-center">
+                <div class="col-md-2">
+                    <h6 class="fw-bold mb-1">${rule.name}</h6>
+                    <small class="text-muted">${rule.description || ''}</small>
+                </div>
+                <div class="col-md-2">
+                    <span class="badge ${rule.type === 'default' ? 'bg-primary' : 'bg-success'}">${rule.type === 'default' ? '默认规则' : '自定义规则'}</span>
+                </div>
+                <div class="col-md-4">
+                    <div class="regex-example">
+                        ${rule.pattern}
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="rule${rule.id}" ${rule.enabled ? 'checked' : ''}
+                               onchange="toggleRule(${rule.id}, this.checked)">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-test" onclick="testRule(${rule.id}, '${rule.pattern.replace(/'/g, "\\'")}')">测试</button>
+                        <button class="btn btn-sm btn-edit" onclick="editRule(${rule.id})">编辑</button>
+                        ${rule.type === 'custom' ? `<button class="btn btn-sm btn-delete" onclick="deleteRule(${rule.id})">删除</button>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+        rulesContainer.appendChild(ruleDiv);
+    });
+}
+
+// 切换规则启用状态
+async function toggleRule(ruleId, enabled) {
+    try {
+        // 先获取当前规则信息
+        const rulesResponse = await axios.get('/api/verification-rules');
+        if (!rulesResponse.data.success) {
+            showAlert('获取规则信息失败');
+            return;
+        }
+
+        const rule = rulesResponse.data.data.find(r => r.id === ruleId);
+        if (!rule) {
+            showAlert('规则不存在');
+            return;
+        }
+
+        // 更新规则状态
+        const response = await axios.put(`/api/verification-rules/${ruleId}`, {
+            name: rule.name,
+            description: rule.description,
+            pattern: rule.pattern,
+            type: rule.type,
+            priority: rule.priority,
+            enabled: enabled
+        });
+
+        if (response.data.success) {
+            showAlert(`规则已${enabled ? '启用' : '禁用'}`);
+        } else {
+            showAlert('切换失败: ' + response.data.message);
+        }
+    } catch (error) {
+        console.error('Failed to toggle rule:', error);
+        if (error.response && error.response.data) {
+            showAlert('切换失败: ' + error.response.data.message);
+        } else {
+            showAlert('切换规则状态失败');
+        }
+    }
+}
+
+// 添加规则表单提交
+document.getElementById('addRuleForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const ruleName = document.getElementById('ruleName').value;
+    const ruleType = document.getElementById('ruleType').value;
+    const ruleDescription = document.getElementById('ruleDescription').value;
+    const regexPattern = document.getElementById('regexPattern').value;
+    const testContent = document.getElementById('testContent').value;
+    const testExample = document.getElementById('testExample').value;
+    const enableRule = document.getElementById('enableRule').checked;
+
+    if (!ruleName || !regexPattern) {
+        showAlert('请填写规则名称和正则表达式');
+        return;
+    }
+
+    try {
+        const response = await axios.post('/api/verification-rules', {
+            name: ruleName,
+            type: ruleType,
+            description: ruleDescription,
+            pattern: regexPattern,
+            priority: 0,
+            enabled: enableRule
+        });
+
+        if (response.data.success) {
+            showAlert('验证码规则添加成功');
+            document.getElementById('addRuleForm').reset();
+            loadVerificationRules();
+        } else {
+            showAlert('添加失败: ' + response.data.message);
+        }
+    } catch (error) {
+        console.error('Failed to add verification rule:', error);
+        if (error.response && error.response.data) {
+            showAlert('添加失败: ' + error.response.data.message);
+        } else {
+            showAlert('添加验证码规则失败');
+        }
+    }
+});
+
+// 显示添加规则模态框
+function showAddRuleModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addRuleModal'));
+    modal.show();
+}
+
+// 保存规则
+async function saveRule() {
+    const ruleName = document.getElementById('modalRuleName').value;
+    const ruleType = document.getElementById('modalRuleType').value;
+    const ruleDescription = document.getElementById('modalRuleDescription').value;
+    const regexPattern = document.getElementById('modalRegexPattern').value;
+    const enableRule = document.getElementById('modalEnableRule').checked;
+
+    if (!ruleName || !regexPattern) {
+        showAlert('请填写规则名称和正则表达式');
+        return;
+    }
+
+    try {
+        const response = await axios.post('/api/verification-rules', {
+            name: ruleName,
+            type: ruleType,
+            description: ruleDescription,
+            pattern: regexPattern,
+            priority: 0,
+            enabled: enableRule
+        });
+
+        if (response.data.success) {
+            showAlert('验证码规则保存成功');
+            bootstrap.Modal.getInstance(document.getElementById('addRuleModal')).hide();
+            document.getElementById('modalAddRuleForm').reset();
+            loadVerificationRules();
+        } else {
+            showAlert('保存失败: ' + response.data.message);
+        }
+    } catch (error) {
+        console.error('Failed to save verification rule:', error);
+        if (error.response && error.response.data) {
+            showAlert('保存失败: ' + error.response.data.message);
+        } else {
+            showAlert('保存验证码规则失败');
+        }
+    }
+}
+
+// 编辑规则
+async function editRule(ruleId) {
+    try {
+        // 获取规则列表
+        const response = await axios.get('/api/verification-rules');
+        if (!response.data.success) {
+            showAlert('获取规则信息失败');
+            return;
+        }
+
+        // 找到要编辑的规则
+        const rule = response.data.data.find(r => r.id === ruleId);
+        if (!rule) {
+            showAlert('规则不存在');
+            return;
+        }
+
+        // 填充编辑表单
+        document.getElementById('editRuleId').value = rule.id;
+        document.getElementById('editRuleName').value = rule.name;
+        document.getElementById('editRuleType').value = rule.type;
+        document.getElementById('editRuleDescription').value = rule.description || '';
+        document.getElementById('editRegexPattern').value = rule.pattern;
+        document.getElementById('editEnableRule').checked = rule.enabled;
+
+        // 显示模态框
+        const modal = new bootstrap.Modal(document.getElementById('editRuleModal'));
+        modal.show();
+    } catch (error) {
+        console.error('Failed to load rule for editing:', error);
+        showAlert('加载规则信息失败');
+    }
+}
+
+// 更新规则
+async function updateRule() {
+    const ruleId = document.getElementById('editRuleId').value;
+    const ruleName = document.getElementById('editRuleName').value;
+    const ruleType = document.getElementById('editRuleType').value;
+    const ruleDescription = document.getElementById('editRuleDescription').value;
+    const regexPattern = document.getElementById('editRegexPattern').value;
+    const enableRule = document.getElementById('editEnableRule').checked;
+
+    if (!ruleName || !regexPattern) {
+        showAlert('请填写规则名称和正则表达式');
+        return;
+    }
+
+    try {
+        const response = await axios.put(`/api/verification-rules/${ruleId}`, {
+            name: ruleName,
+            type: ruleType,
+            description: ruleDescription,
+            pattern: regexPattern,
+            priority: 0,
+            enabled: enableRule
+        });
+
+        if (response.data.success) {
+            showAlert('验证码规则更新成功');
+            bootstrap.Modal.getInstance(document.getElementById('editRuleModal')).hide();
+            loadVerificationRules();
+        } else {
+            showAlert('更新失败: ' + response.data.message);
+        }
+    } catch (error) {
+        console.error('Failed to update verification rule:', error);
+        if (error.response && error.response.data) {
+            showAlert('更新失败: ' + error.response.data.message);
+        } else {
+            showAlert('更新验证码规则失败');
+        }
+    }
+}
+
+// 删除规则
+async function deleteRule(ruleId) {
+    if (!confirm('确定要删除这个验证码规则吗？')) {
+        return;
+    }
+
+    try {
+        const response = await axios.delete(`/api/verification-rules/${ruleId}`);
+        if (response.data.success) {
+            showAlert('验证码规则删除成功');
+            loadVerificationRules();
+        } else {
+            showAlert('删除失败: ' + response.data.message);
+        }
+    } catch (error) {
+        console.error('Failed to delete verification rule:', error);
+        if (error.response && error.response.data) {
+            showAlert('删除失败: ' + error.response.data.message);
+        } else {
+            showAlert('删除验证码规则失败');
+        }
+    }
+}
+
+// 测试规则
+function testRule(ruleId, pattern) {
+    document.getElementById('testRulePattern').value = pattern;
+
+    const modal = new bootstrap.Modal(document.getElementById('testRuleModal'));
+    modal.show();
+}
+
+// 运行测试
+async function runTest() {
+    const pattern = document.getElementById('testRulePattern').value;
+    const content = document.getElementById('testContentArea').value;
+    const resultDiv = document.getElementById('testResult');
+
+    if (!content) {
+        resultDiv.innerHTML = '<span class="text-warning">请输入测试内容</span>';
+        return;
+    }
+
+    try {
+        const response = await axios.post('/api/verification-rules/test', {
+            pattern: pattern,
+            test_content: content
+        });
+
+        if (response.data.success) {
+            const extractedCodes = response.data.data;
+            if (extractedCodes && extractedCodes.length > 0) {
+                resultDiv.innerHTML = `
+                    <div class="text-success">
+                        <i class="bi bi-check-circle me-2"></i>
+                        <strong>匹配成功</strong>
+                    </div>
+                    <div class="mt-2">
+                        <strong>提取的验证码：</strong>
+                        <div class="mt-1">
+                            ${extractedCodes.map(code => `<span class="badge bg-success me-1">${code.code}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <strong>匹配详情：</strong>
+                        <div class="mt-1">
+                            ${extractedCodes.map(code => `<div class="small text-muted">匹配文本: "${code.matched_text}"</div>`).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="text-danger">
+                        <i class="bi bi-x-circle me-2"></i>
+                        <strong>匹配失败</strong>
+                    </div>
+                    <div class="mt-2 text-muted">
+                        没有找到匹配的验证码
+                    </div>
+                `;
+            }
+        } else {
+            resultDiv.innerHTML = `
+                <div class="text-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>测试失败</strong>
+                </div>
+                <div class="mt-2 text-muted">
+                    ${response.data.message}
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Test failed:', error);
+        resultDiv.innerHTML = `
+            <div class="text-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>测试错误</strong>
+            </div>
+            <div class="mt-2 text-muted">
+                ${error.response?.data?.message || error.message}
+            </div>
+        `;
+    }
+}
+
+// 显示提示信息
+function showAlert(message) {
+    // 创建临时提示框
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-info alert-dismissible fade show position-fixed';
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    document.body.appendChild(alertDiv);
+
+    // 3秒后自动移除
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 3000);
+}
+
+// 退出登录
+async function logout() {
+    try {
+        await axios.post('/api/logout');
+        window.location.href = '/login';
+    } catch (error) {
+        console.error('Logout error:', error);
+        window.location.href = '/login';
+    }
+}
+</script>
+
+<!-- 全局提示框 -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="alertToast" class="toast" role="alert">
+        <div class="toast-header">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong class="me-auto">系统提示</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="alertMessage">
+        </div>
+    </div>
+</div>
+</body>
+</html>

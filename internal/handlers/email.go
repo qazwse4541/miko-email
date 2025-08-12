@@ -21,6 +21,7 @@ import (
 	"miko-email/internal/services/global_forward"
 	"miko-email/internal/services/mailbox"
 	smtpService "miko-email/internal/services/smtp"
+	"miko-email/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
@@ -31,16 +32,18 @@ type EmailHandler struct {
 	mailboxService       *mailbox.Service
 	forwardService       *forward.Service
 	globalForwardService *global_forward.Service
+	verificationService  *services.VerificationService
 	sessionStore         *sessions.CookieStore
 	smtpClient           *smtpService.OutboundClient
 }
 
-func NewEmailHandler(emailService *email.Service, mailboxService *mailbox.Service, forwardService *forward.Service, globalForwardService *global_forward.Service, sessionStore *sessions.CookieStore) *EmailHandler {
+func NewEmailHandler(emailService *email.Service, mailboxService *mailbox.Service, forwardService *forward.Service, globalForwardService *global_forward.Service, verificationService *services.VerificationService, sessionStore *sessions.CookieStore) *EmailHandler {
 	return &EmailHandler{
 		emailService:         emailService,
 		mailboxService:       mailboxService,
 		forwardService:       forwardService,
 		globalForwardService: globalForwardService,
+		verificationService:  verificationService,
 		sessionStore:         sessionStore,
 		smtpClient:           smtpService.NewOutboundClientWithDB(mailboxService.GetDB()), // 使用数据库动态获取域名
 	}
@@ -1076,9 +1079,15 @@ func (h *EmailHandler) GetVerificationCode(c *gin.Context) {
 			}
 		}
 
-		// 提取验证码
-		codes := extractVerificationCodes(email.Body)
-		if len(codes) > 0 {
+		// 提取验证码 - 使用验证码服务
+		extractedCodes, err := h.verificationService.ExtractVerificationCodes(email.Body)
+		if err == nil && len(extractedCodes) > 0 {
+			// 转换为字符串数组格式以保持兼容性
+			var codes []string
+			for _, code := range extractedCodes {
+				codes = append(codes, code.Code)
+			}
+
 			results = append(results, map[string]interface{}{
 				"email_id":    email.ID,
 				"from":        email.FromAddr,
