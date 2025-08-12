@@ -30,6 +30,7 @@ import (
 
 	"miko-email/internal/models"
 	"miko-email/internal/services/forward"
+	"miko-email/internal/services/global_forward"
 	"miko-email/internal/services/smtp"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/japanese"
@@ -95,18 +96,20 @@ func (ct *ConnectionTracker) IsAllowed(ip string) bool {
 }
 
 type Service struct {
-	db             *sql.DB
-	tracker        *ConnectionTracker
-	forwardService *forward.Service
-	smtpClient     *smtp.OutboundClient
+	db                   *sql.DB
+	tracker              *ConnectionTracker
+	forwardService       *forward.Service
+	globalForwardService *global_forward.Service
+	smtpClient           *smtp.OutboundClient
 }
 
 func NewService(db *sql.DB) *Service {
 	return &Service{
-		db:             db,
-		tracker:        NewConnectionTracker(),
-		forwardService: forward.NewService(db),
-		smtpClient:     smtp.NewOutboundClientWithDB(db), // 使用数据库动态获取域名
+		db:                   db,
+		tracker:              NewConnectionTracker(),
+		forwardService:       forward.NewService(db),
+		globalForwardService: global_forward.NewService(db),
+		smtpClient:           smtp.NewOutboundClientWithDB(db), // 使用数据库动态获取域名
 	}
 }
 
@@ -3165,15 +3168,21 @@ func (s *Service) processForwardRules(sourceEmail, fromAddr, subject, body strin
 	rules, err := s.forwardService.GetActiveForwardRules(sourceEmail)
 	if err != nil {
 		log.Printf("获取转发规则失败: %v", err)
-		return
 	}
 
-	if len(rules) == 0 {
+	// 获取全局转发规则
+	globalRules, err := s.globalForwardService.GetActiveGlobalForwardRules(sourceEmail)
+	if err != nil {
+		log.Printf("获取全局转发规则失败: %v", err)
+	}
+
+	totalRules := len(rules) + len(globalRules)
+	if totalRules == 0 {
 		log.Printf("邮箱 %s 没有活跃的转发规则", sourceEmail)
 		return
 	}
 
-	log.Printf("找到 %d 个转发规则，开始处理转发", len(rules))
+	log.Printf("找到 %d 个普通转发规则和 %d 个全局转发规则，开始处理转发", len(rules), len(globalRules))
 
 	for _, rule := range rules {
 		log.Printf("处理转发规则: %s -> %s", rule.SourceEmail, rule.TargetEmail)
@@ -3210,6 +3219,44 @@ func (s *Service) processForwardRules(sourceEmail, fromAddr, subject, body strin
 
 		log.Printf("✅ 邮件转发成功: %s -> %s", rule.SourceEmail, rule.TargetEmail)
 	}
+
+	// 处理全局转发规则
+	for _, globalRule := range globalRules {
+		log.Printf("处理全局转发规则: %s -> %s (模式: %s)", sourceEmail, globalRule.TargetEmail, globalRule.SourcePattern)
+
+		// 构建转发邮件的主题
+		forwardSubject := subject
+		if globalRule.SubjectPrefix != "" {
+			forwardSubject = globalRule.SubjectPrefix + " " + subject
+		}
+
+		// 构建转发邮件的内容
+		forwardBody := fmt.Sprintf(`
+-------- 全局转发邮件 --------
+发件人: %s
+收件人: %s
+主题: %s
+时间: %s
+转发规则: %s (%s)
+
+%s
+`, fromAddr, sourceEmail, subject, time.Now().Format("2006-01-02 15:04:05"), globalRule.Name, globalRule.SourcePattern, body)
+
+		// 发送转发邮件
+		err := s.sendForwardEmail(sourceEmail, globalRule.TargetEmail, forwardSubject, forwardBody)
+		if err != nil {
+			log.Printf("全局转发邮件失败: %v", err)
+			continue
+		}
+
+		// 更新转发次数
+		err = s.globalForwardService.IncrementForwardCount(globalRule.ID)
+		if err != nil {
+			log.Printf("更新全局转发次数失败: %v", err)
+		}
+
+		log.Printf("✅ 全局邮件转发成功: %s -> %s", sourceEmail, globalRule.TargetEmail)
+	}
 }
 
 // processForwardRulesWithAttachments 处理邮件转发规则（包含附件）
@@ -3218,15 +3265,21 @@ func (s *Service) processForwardRulesWithAttachments(emailID int64, sourceEmail,
 	rules, err := s.forwardService.GetActiveForwardRules(sourceEmail)
 	if err != nil {
 		log.Printf("获取转发规则失败: %v", err)
-		return
 	}
 
-	if len(rules) == 0 {
+	// 获取全局转发规则
+	globalRules, err := s.globalForwardService.GetActiveGlobalForwardRules(sourceEmail)
+	if err != nil {
+		log.Printf("获取全局转发规则失败: %v", err)
+	}
+
+	totalRules := len(rules) + len(globalRules)
+	if totalRules == 0 {
 		log.Printf("邮箱 %s 没有活跃的转发规则", sourceEmail)
 		return
 	}
 
-	log.Printf("找到 %d 个转发规则，开始处理转发（包含 %d 个附件）", len(rules), len(attachments))
+	log.Printf("找到 %d 个普通转发规则和 %d 个全局转发规则，开始处理转发（包含 %d 个附件）", len(rules), len(globalRules), len(attachments))
 
 	for _, rule := range rules {
 		log.Printf("处理转发规则: %s -> %s", rule.SourceEmail, rule.TargetEmail)
@@ -3271,6 +3324,53 @@ func (s *Service) processForwardRulesWithAttachments(emailID int64, sourceEmail,
 		}
 
 		log.Printf("✅ 邮件转发成功: %s -> %s（附件: %d 个）", rule.SourceEmail, rule.TargetEmail, len(forwardAttachments))
+	}
+
+	// 处理全局转发规则
+	for _, globalRule := range globalRules {
+		log.Printf("处理全局转发规则: %s -> %s (模式: %s)", sourceEmail, globalRule.TargetEmail, globalRule.SourcePattern)
+
+		// 构建转发邮件的主题
+		forwardSubject := subject
+		if globalRule.SubjectPrefix != "" {
+			forwardSubject = globalRule.SubjectPrefix + " " + subject
+		}
+
+		// 构建转发邮件的内容
+		forwardBody := fmt.Sprintf(`
+-------- 全局转发邮件 --------
+发件人: %s
+收件人: %s
+主题: %s
+时间: %s
+转发规则: %s (%s)
+
+%s
+`, fromAddr, sourceEmail, subject, time.Now().Format("2006-01-02 15:04:05"), globalRule.Name, globalRule.SourcePattern, body)
+
+		// 决定是否转发附件
+		var forwardAttachments []models.EmailAttachment
+		if globalRule.ForwardAttachments && len(attachments) > 0 {
+			forwardAttachments = attachments
+			log.Printf("全局转发规则允许转发附件，将转发 %d 个附件", len(attachments))
+		} else {
+			log.Printf("全局转发规则不允许转发附件或没有附件")
+		}
+
+		// 发送转发邮件（包含附件）
+		err := s.sendForwardEmailWithAttachments(sourceEmail, globalRule.TargetEmail, forwardSubject, forwardBody, forwardAttachments)
+		if err != nil {
+			log.Printf("全局转发邮件失败: %v", err)
+			continue
+		}
+
+		// 更新转发次数
+		err = s.globalForwardService.IncrementForwardCount(globalRule.ID)
+		if err != nil {
+			log.Printf("更新全局转发次数失败: %v", err)
+		}
+
+		log.Printf("✅ 全局邮件转发成功: %s -> %s（附件: %d 个）", sourceEmail, globalRule.TargetEmail, len(forwardAttachments))
 	}
 }
 

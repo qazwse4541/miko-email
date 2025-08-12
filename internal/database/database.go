@@ -153,6 +153,26 @@ func createTables(db *sql.DB) error {
 			FOREIGN KEY (mailbox_id) REFERENCES mailboxes(id)
 		)`,
 
+		// 全局转发规则表
+		`CREATE TABLE IF NOT EXISTS global_forward_rules (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			name TEXT NOT NULL,
+			source_pattern TEXT NOT NULL,
+			target_email TEXT NOT NULL,
+			enabled BOOLEAN DEFAULT 1,
+			keep_original BOOLEAN DEFAULT 1,
+			forward_attachments BOOLEAN DEFAULT 1,
+			subject_prefix TEXT DEFAULT '[全局转发]',
+			description TEXT,
+			priority INTEGER DEFAULT 0,
+			forward_count INTEGER DEFAULT 0,
+			last_forward_at DATETIME,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
+
 		// 创建索引
 		`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`,
 		`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`,

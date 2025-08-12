@@ -13,6 +13,7 @@ import (
 	"miko-email/internal/services/domain"
 	"miko-email/internal/services/email"
 	"miko-email/internal/services/forward"
+	"miko-email/internal/services/global_forward"
 	"miko-email/internal/services/mail"
 	"miko-email/internal/services/mailbox"
 	"miko-email/internal/services/user"
@@ -22,12 +23,13 @@ import (
 )
 
 type Server struct {
-	router         *gin.Engine
-	db             *sql.DB
-	config         *config.Config
-	sessionStore   *sessions.CookieStore
-	emailService   *email.Service
-	forwardService *forward.Service
+	router               *gin.Engine
+	db                   *sql.DB
+	config               *config.Config
+	sessionStore         *sessions.CookieStore
+	emailService         *email.Service
+	forwardService       *forward.Service
+	globalForwardService *global_forward.Service
 }
 
 func New(db *sql.DB, cfg *config.Config) *Server {
@@ -47,13 +49,17 @@ func New(db *sql.DB, cfg *config.Config) *Server {
 	// 创建转发服务
 	forwardService := forward.NewService(db)
 
+	// 创建全局转发服务
+	globalForwardService := global_forward.NewService(db)
+
 	server := &Server{
-		router:         gin.Default(),
-		db:             db,
-		config:         cfg,
-		sessionStore:   sessionStore,
-		emailService:   emailService,
-		forwardService: forwardService,
+		router:               gin.Default(),
+		db:                   db,
+		config:               cfg,
+		sessionStore:         sessionStore,
+		emailService:         emailService,
+		forwardService:       forwardService,
+		globalForwardService: globalForwardService,
 	}
 
 	server.setupRoutes()
@@ -116,7 +122,7 @@ func (s *Server) setupRoutes() {
 	mailboxHandler := handlers.NewMailboxHandler(mailboxService, s.sessionStore)
 	domainHandler := handlers.NewDomainHandler(domainService, dkimService, s.sessionStore)
 	userHandler := handlers.NewUserHandler(userService, s.sessionStore)
-	emailHandler := handlers.NewEmailHandler(s.emailService, mailboxService, s.forwardService, s.sessionStore)
+	emailHandler := handlers.NewEmailHandler(s.emailService, mailboxService, s.forwardService, s.globalForwardService, s.sessionStore)
 	webHandler := handlers.NewWebHandler(s.sessionStore)
 	systemHandler := handlers.NewSystemHandler(s.sessionStore, s.db)
 
@@ -218,6 +224,14 @@ func (s *Server) setupRoutes() {
 			apiAuth.PATCH("/forward-rules/:id/toggle", emailHandler.ToggleForwardRule)
 			apiAuth.POST("/forward-rules/:id/test", emailHandler.TestForwardRule)
 			apiAuth.GET("/forward-statistics", emailHandler.GetForwardStatistics)
+
+			// 全局转发规则相关
+			apiAuth.GET("/global-forward-rules", emailHandler.GetGlobalForwardRules)
+			apiAuth.POST("/global-forward-rules", emailHandler.CreateGlobalForwardRule)
+			apiAuth.GET("/global-forward-rules/:id", emailHandler.GetGlobalForwardRule)
+			apiAuth.PUT("/global-forward-rules/:id", emailHandler.UpdateGlobalForwardRule)
+			apiAuth.DELETE("/global-forward-rules/:id", emailHandler.DeleteGlobalForwardRule)
+			apiAuth.PATCH("/global-forward-rules/:id/toggle", emailHandler.ToggleGlobalForwardRule)
 
 			// 验证码提取
 			apiAuth.GET("/emails/verification-code", emailHandler.GetVerificationCode)

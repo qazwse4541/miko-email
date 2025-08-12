@@ -218,8 +218,28 @@
                         </div>
                     </div>
 
-                    <!-- 转发规则统计 -->
-                    <div class="row mb-4">
+                    <!-- 标签页导航 -->
+                    <ul class="nav nav-tabs mb-4" id="forwardTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="normal-forward-tab" data-bs-toggle="tab"
+                                    data-bs-target="#normal-forward" type="button" role="tab">
+                                <i class="bi bi-envelope me-2"></i>普通转发
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="global-forward-tab" data-bs-toggle="tab"
+                                    data-bs-target="#global-forward" type="button" role="tab">
+                                <i class="bi bi-globe me-2"></i>全局转发
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- 标签页内容 -->
+                    <div class="tab-content" id="forwardTabContent">
+                        <!-- 普通转发标签页 -->
+                        <div class="tab-pane fade show active" id="normal-forward" role="tabpanel">
+                            <!-- 转发规则统计 -->
+                            <div class="row mb-4">
                         <div class="col-xl-3 col-md-6 mb-4">
                             <div class="card stats-card border-left-primary shadow h-100 py-2">
                                 <div class="card-body">
@@ -425,6 +445,242 @@
                             </div>
                         </div>
                     </div>
+                        </div>
+
+                        <!-- 全局转发标签页 -->
+                        <div class="tab-pane fade" id="global-forward" role="tabpanel">
+                            <!-- 全局转发规则说明 -->
+                            <div class="alert alert-info" role="alert">
+                                <h6 class="alert-heading">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    全局转发规则说明
+                                </h6>
+                                <p class="mb-2">全局转发规则可以匹配多个邮箱地址，支持以下模式：</p>
+                                <ul class="mb-0">
+                                    <li><code>*</code> - 匹配所有邮箱</li>
+                                    <li><code>*@example.com</code> - 匹配指定域名下的所有邮箱</li>
+                                    <li><code>user@*</code> - 匹配指定用户名的所有域名</li>
+                                    <li><code>user@example.com</code> - 精确匹配指定邮箱</li>
+                                </ul>
+                            </div>
+
+                            <!-- 全局转发统计 -->
+                            <div class="row mb-4">
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <div class="card stats-card border-left-primary shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                                        全局规则数
+                                                    </div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalGlobalRules">0</div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="bi bi-globe display-4 text-primary"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <div class="card stats-card border-left-success shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                                        启用规则
+                                                    </div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800" id="activeGlobalRules">0</div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="bi bi-check-circle display-4 text-success"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <div class="card stats-card border-left-info shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                                        全局转发量
+                                                    </div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalGlobalForwards">0</div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="bi bi-arrow-repeat display-4 text-info"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-xl-3 col-md-6 mb-4">
+                                    <div class="card stats-card border-left-warning shadow h-100 py-2">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                                        今日转发
+                                                    </div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800" id="todayGlobalForwards">0</div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <i class="bi bi-calendar-day display-4 text-warning"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 新建/编辑全局转发规则 -->
+                            <div class="card shadow mb-4" id="globalForwardRuleForm" style="display: none;">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary">
+                                        <i class="bi bi-plus-circle me-2"></i><span id="globalFormTitle">新建全局转发规则</span>
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <form id="globalForwardForm">
+                                        <input type="hidden" id="globalRuleId" value="">
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <label for="globalRuleName" class="form-label">规则名称</label>
+                                                <input type="text" class="form-control" id="globalRuleName"
+                                                       placeholder="例如：全域转发规则" required>
+                                                <div class="form-text">为这个转发规则起一个容易识别的名称</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="globalPriority" class="form-label">优先级</label>
+                                                <input type="number" class="form-control" id="globalPriority"
+                                                       value="0" min="0" max="100">
+                                                <div class="form-text">数值越大优先级越高</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <label for="globalSourcePattern" class="form-label">源邮箱模式</label>
+                                                <input type="text" class="form-control" id="globalSourcePattern"
+                                                       placeholder="例如：*@example.com" required>
+                                                <div class="form-text">支持通配符匹配模式</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="globalTargetEmail" class="form-label">目标邮箱</label>
+                                                <input type="email" class="form-control" id="globalTargetEmail"
+                                                       placeholder="target@gmail.com" required>
+                                                <div class="form-text">转发到的目标邮箱地址</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <label for="globalSubjectPrefix" class="form-label">主题前缀</label>
+                                                <input type="text" class="form-control" id="globalSubjectPrefix"
+                                                       value="[全局转发]">
+                                                <div class="form-text">在转发邮件主题前添加的前缀</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="globalDescription" class="form-label">描述</label>
+                                                <input type="text" class="form-control" id="globalDescription"
+                                                       placeholder="描述这个转发规则的用途...">
+                                                <div class="form-text">可选的规则描述</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row mb-3">
+                                            <div class="col-md-4">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="globalForwardEnabled" checked>
+                                                    <label class="form-check-label" for="globalForwardEnabled">
+                                                        启用规则
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="globalKeepOriginal" checked>
+                                                    <label class="form-check-label" for="globalKeepOriginal">
+                                                        保留原邮件副本
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="globalForwardAttachments" checked>
+                                                    <label class="form-check-label" for="globalForwardAttachments">
+                                                        转发附件
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <button type="button" class="btn btn-primary" onclick="saveGlobalForwardRule()">
+                                                    <i class="bi bi-check-circle"></i> <span id="globalSaveButtonText">保存规则</span>
+                                                </button>
+                                            </div>
+                                            <div>
+                                                <button type="button" class="btn btn-outline-secondary" onclick="cancelGlobalEdit()">
+                                                    <i class="bi bi-x-circle"></i> 取消
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- 全局转发规则列表 -->
+                            <div class="card shadow">
+                                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                                    <h6 class="m-0 font-weight-bold text-primary">
+                                        <i class="bi bi-globe me-2"></i>全局转发规则列表
+                                    </h6>
+                                    <button type="button" class="btn btn-sm btn-primary" onclick="addNewGlobalForwardRule()">
+                                        <i class="bi bi-plus-circle"></i> 新建全局规则
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>规则名称</th>
+                                                    <th>源模式</th>
+                                                    <th>目标邮箱</th>
+                                                    <th>状态</th>
+                                                    <th>优先级</th>
+                                                    <th>转发次数</th>
+                                                    <th>创建时间</th>
+                                                    <th>操作</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="globalForwardRulesTableBody">
+                                                <!-- 动态加载全局转发规则 -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- 空状态 -->
+                                    <div id="globalEmptyState" class="text-center py-5" style="display: none;">
+                                        <i class="bi bi-globe display-1 text-muted"></i>
+                                        <h5 class="text-muted mt-3">暂无全局转发规则</h5>
+                                        <p class="text-muted">点击上方"新建全局规则"按钮创建您的第一个全局转发规则</p>
+                                        <button type="button" class="btn btn-primary" onclick="addNewGlobalForwardRule()">
+                                            <i class="bi bi-plus-circle"></i> 新建全局规则
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -482,6 +738,17 @@
             loadForwardRules();
             loadStatistics();
             initForwardForm();
+
+            // 初始化全局转发
+            loadGlobalForwardRules();
+            loadGlobalStatistics();
+            initGlobalForwardForm();
+
+            // 标签页切换事件
+            document.getElementById('global-forward-tab').addEventListener('shown.bs.tab', function () {
+                loadGlobalForwardRules();
+                loadGlobalStatistics();
+            });
         });
 
         // 初始化转发表单
@@ -795,6 +1062,231 @@
             document.getElementById('alertMessage').textContent = message;
             const toast = new bootstrap.Toast(document.getElementById('alertToast'));
             toast.show();
+        }
+
+        // ==================== 全局转发功能 ====================
+
+        let currentEditingGlobalRuleId = null;
+
+        // 初始化全局转发表单
+        function initGlobalForwardForm() {
+            document.getElementById('globalForwardForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                saveGlobalForwardRule();
+            });
+        }
+
+        // 加载全局转发规则
+        async function loadGlobalForwardRules() {
+            try {
+                const response = await axios.get('/api/global-forward-rules');
+                const rules = response.data.data || [];
+
+                const tbody = document.getElementById('globalForwardRulesTableBody');
+                const emptyState = document.getElementById('globalEmptyState');
+
+                if (rules.length === 0) {
+                    tbody.innerHTML = '';
+                    emptyState.style.display = 'block';
+                    return;
+                }
+
+                emptyState.style.display = 'none';
+                tbody.innerHTML = rules.map(rule => `
+                    <tr>
+                        <td>
+                            <strong>${rule.name}</strong>
+                            ${rule.description ? `<br><small class="text-muted">${rule.description}</small>` : ''}
+                        </td>
+                        <td>
+                            <code>${rule.source_pattern}</code>
+                        </td>
+                        <td>
+                            <i class="bi bi-envelope me-2"></i>
+                            ${rule.target_email}
+                        </td>
+                        <td>
+                            <span class="badge ${rule.enabled ? 'bg-success' : 'bg-secondary'}">
+                                <i class="bi ${rule.enabled ? 'bi-check-circle' : 'bi-pause-circle'} me-1"></i>
+                                ${rule.enabled ? '启用' : '禁用'}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info">${rule.priority}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary">${rule.forward_count || 0}</span>
+                        </td>
+                        <td>${new Date(rule.created_at).toLocaleString('zh-CN')}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" onclick="editGlobalForwardRule(${rule.id})" title="编辑">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-${rule.enabled ? 'warning' : 'success'}"
+                                        onclick="toggleGlobalForwardRule(${rule.id}, ${!rule.enabled})"
+                                        title="${rule.enabled ? '禁用' : '启用'}">
+                                    <i class="bi bi-${rule.enabled ? 'pause' : 'play'}"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="deleteGlobalForwardRule(${rule.id})" title="删除">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load global forward rules:', error);
+                showAlert('加载全局转发规则失败');
+            }
+        }
+
+        // 加载全局转发统计
+        async function loadGlobalStatistics() {
+            try {
+                const response = await axios.get('/api/global-forward-rules');
+                const rules = response.data.data || [];
+
+                const totalRules = rules.length;
+                const activeRules = rules.filter(rule => rule.enabled).length;
+                const totalForwards = rules.reduce((sum, rule) => sum + (rule.forward_count || 0), 0);
+
+                document.getElementById('totalGlobalRules').textContent = totalRules;
+                document.getElementById('activeGlobalRules').textContent = activeRules;
+                document.getElementById('totalGlobalForwards').textContent = totalForwards;
+                document.getElementById('todayGlobalForwards').textContent = '0'; // 需要后端支持
+            } catch (error) {
+                console.error('Failed to load global statistics:', error);
+            }
+        }
+
+        // 添加新的全局转发规则
+        function addNewGlobalForwardRule() {
+            currentEditingGlobalRuleId = null;
+            document.getElementById('globalFormTitle').textContent = '新建全局转发规则';
+            document.getElementById('globalSaveButtonText').textContent = '保存规则';
+            document.getElementById('globalForwardForm').reset();
+            document.getElementById('globalForwardEnabled').checked = true;
+            document.getElementById('globalKeepOriginal').checked = true;
+            document.getElementById('globalForwardAttachments').checked = true;
+            document.getElementById('globalSubjectPrefix').value = '[全局转发]';
+            document.getElementById('globalPriority').value = '0';
+            document.getElementById('globalForwardRuleForm').style.display = 'block';
+            document.getElementById('globalRuleName').focus();
+        }
+
+        // 编辑全局转发规则
+        async function editGlobalForwardRule(ruleId) {
+            try {
+                const response = await axios.get(`/api/global-forward-rules/${ruleId}`);
+                const rule = response.data.data;
+
+                currentEditingGlobalRuleId = ruleId;
+                document.getElementById('globalFormTitle').textContent = '编辑全局转发规则';
+                document.getElementById('globalSaveButtonText').textContent = '更新规则';
+
+                document.getElementById('globalRuleId').value = rule.id;
+                document.getElementById('globalRuleName').value = rule.name;
+                document.getElementById('globalSourcePattern').value = rule.source_pattern;
+                document.getElementById('globalTargetEmail').value = rule.target_email;
+                document.getElementById('globalSubjectPrefix').value = rule.subject_prefix || '';
+                document.getElementById('globalDescription').value = rule.description || '';
+                document.getElementById('globalPriority').value = rule.priority || 0;
+                document.getElementById('globalForwardEnabled').checked = rule.enabled;
+                document.getElementById('globalKeepOriginal').checked = rule.keep_original;
+                document.getElementById('globalForwardAttachments').checked = rule.forward_attachments;
+
+                document.getElementById('globalForwardRuleForm').style.display = 'block';
+                document.getElementById('globalRuleName').focus();
+            } catch (error) {
+                console.error('Failed to load global forward rule:', error);
+                showAlert('加载全局转发规则失败');
+            }
+        }
+
+        // 保存全局转发规则
+        async function saveGlobalForwardRule() {
+            const formData = {
+                name: document.getElementById('globalRuleName').value,
+                source_pattern: document.getElementById('globalSourcePattern').value,
+                target_email: document.getElementById('globalTargetEmail').value,
+                subject_prefix: document.getElementById('globalSubjectPrefix').value,
+                description: document.getElementById('globalDescription').value,
+                priority: parseInt(document.getElementById('globalPriority').value) || 0,
+                enabled: document.getElementById('globalForwardEnabled').checked,
+                keep_original: document.getElementById('globalKeepOriginal').checked,
+                forward_attachments: document.getElementById('globalForwardAttachments').checked
+            };
+
+            try {
+                let response;
+                if (currentEditingGlobalRuleId) {
+                    response = await axios.put(`/api/global-forward-rules/${currentEditingGlobalRuleId}`, formData);
+                } else {
+                    response = await axios.post('/api/global-forward-rules', formData);
+                }
+
+                if (response.data.success) {
+                    showAlert(currentEditingGlobalRuleId ? '全局转发规则更新成功' : '全局转发规则创建成功');
+                    cancelGlobalEdit();
+                    loadGlobalForwardRules();
+                    loadGlobalStatistics();
+                } else {
+                    showAlert(response.data.message || '操作失败');
+                }
+            } catch (error) {
+                console.error('Failed to save global forward rule:', error);
+                showAlert('保存全局转发规则失败');
+            }
+        }
+
+        // 取消编辑全局转发规则
+        function cancelGlobalEdit() {
+            currentEditingGlobalRuleId = null;
+            document.getElementById('globalForwardRuleForm').style.display = 'none';
+            document.getElementById('globalForwardForm').reset();
+        }
+
+        // 切换全局转发规则状态
+        async function toggleGlobalForwardRule(ruleId, enabled) {
+            try {
+                const response = await axios.patch(`/api/global-forward-rules/${ruleId}/toggle`, {
+                    enabled: enabled
+                });
+
+                if (response.data.success) {
+                    showAlert(`全局转发规则已${enabled ? '启用' : '禁用'}`);
+                    loadGlobalForwardRules();
+                    loadGlobalStatistics();
+                } else {
+                    showAlert(response.data.message || '操作失败');
+                }
+            } catch (error) {
+                console.error('Failed to toggle global forward rule:', error);
+                showAlert('操作失败');
+            }
+        }
+
+        // 删除全局转发规则
+        async function deleteGlobalForwardRule(ruleId) {
+            if (!confirm('确定要删除这个全局转发规则吗？此操作不可恢复。')) {
+                return;
+            }
+
+            try {
+                const response = await axios.delete(`/api/global-forward-rules/${ruleId}`);
+
+                if (response.data.success) {
+                    showAlert('全局转发规则删除成功');
+                    loadGlobalForwardRules();
+                    loadGlobalStatistics();
+                } else {
+                    showAlert(response.data.message || '删除失败');
+                }
+            } catch (error) {
+                console.error('Failed to delete global forward rule:', error);
+                showAlert('删除全局转发规则失败');
+            }
         }
 
         // 退出登录

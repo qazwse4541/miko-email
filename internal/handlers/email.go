@@ -18,6 +18,7 @@ import (
 	"miko-email/internal/models"
 	"miko-email/internal/services/email"
 	"miko-email/internal/services/forward"
+	"miko-email/internal/services/global_forward"
 	"miko-email/internal/services/mailbox"
 	smtpService "miko-email/internal/services/smtp"
 
@@ -26,20 +27,22 @@ import (
 )
 
 type EmailHandler struct {
-	emailService   *email.Service
-	mailboxService *mailbox.Service
-	forwardService *forward.Service
-	sessionStore   *sessions.CookieStore
-	smtpClient     *smtpService.OutboundClient
+	emailService         *email.Service
+	mailboxService       *mailbox.Service
+	forwardService       *forward.Service
+	globalForwardService *global_forward.Service
+	sessionStore         *sessions.CookieStore
+	smtpClient           *smtpService.OutboundClient
 }
 
-func NewEmailHandler(emailService *email.Service, mailboxService *mailbox.Service, forwardService *forward.Service, sessionStore *sessions.CookieStore) *EmailHandler {
+func NewEmailHandler(emailService *email.Service, mailboxService *mailbox.Service, forwardService *forward.Service, globalForwardService *global_forward.Service, sessionStore *sessions.CookieStore) *EmailHandler {
 	return &EmailHandler{
-		emailService:   emailService,
-		mailboxService: mailboxService,
-		forwardService: forwardService,
-		sessionStore:   sessionStore,
-		smtpClient:     smtpService.NewOutboundClientWithDB(mailboxService.GetDB()), // 使用数据库动态获取域名
+		emailService:         emailService,
+		mailboxService:       mailboxService,
+		forwardService:       forwardService,
+		globalForwardService: globalForwardService,
+		sessionStore:         sessionStore,
+		smtpClient:           smtpService.NewOutboundClientWithDB(mailboxService.GetDB()), // 使用数据库动态获取域名
 	}
 }
 
@@ -1406,4 +1409,213 @@ func (h *EmailHandler) DownloadAttachment(c *gin.Context) {
 
 	// 返回文件内容
 	c.Data(http.StatusOK, attachment.ContentType, content)
+}
+
+// ==================== 全局转发规则相关接口 ====================
+
+// GetGlobalForwardRules 获取全局转发规则列表
+func (h *EmailHandler) GetGlobalForwardRules(c *gin.Context) {
+	c.Header("Content-Type", "application/json; charset=utf-8")
+
+	username := c.GetString("username")
+	userID := c.GetInt("user_id")
+
+	rules, err := h.globalForwardService.GetGlobalForwardRulesByUser(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "获取全局转发规则失败: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    rules,
+		"message": fmt.Sprintf("用户 %s 的全局转发规则", username),
+	})
+}
+
+// CreateGlobalForwardRule 创建全局转发规则
+func (h *EmailHandler) CreateGlobalForwardRule(c *gin.Context) {
+	c.Header("Content-Type", "application/json; charset=utf-8")
+
+	var req global_forward.CreateGlobalForwardRuleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "请求参数错误: " + err.Error(),
+		})
+		return
+	}
+
+	username := c.GetString("username")
+	userID := c.GetInt("user_id")
+
+	newRule, err := h.globalForwardService.CreateGlobalForwardRule(userID, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    newRule,
+		"message": fmt.Sprintf("用户 %s 创建全局转发规则成功", username),
+	})
+}
+
+// GetGlobalForwardRule 获取全局转发规则详情
+func (h *EmailHandler) GetGlobalForwardRule(c *gin.Context) {
+	c.Header("Content-Type", "application/json; charset=utf-8")
+
+	ruleIDStr := c.Param("id")
+	ruleID, err := strconv.Atoi(ruleIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "无效的规则ID",
+		})
+		return
+	}
+
+	userID := c.GetInt("user_id")
+
+	rule, err := h.globalForwardService.GetGlobalForwardRuleByID(ruleID, userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    rule,
+	})
+}
+
+// UpdateGlobalForwardRule 更新全局转发规则
+func (h *EmailHandler) UpdateGlobalForwardRule(c *gin.Context) {
+	c.Header("Content-Type", "application/json; charset=utf-8")
+
+	ruleIDStr := c.Param("id")
+	ruleID, err := strconv.Atoi(ruleIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "无效的规则ID",
+		})
+		return
+	}
+
+	var req global_forward.UpdateGlobalForwardRuleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "请求参数错误: " + err.Error(),
+		})
+		return
+	}
+
+	username := c.GetString("username")
+	userID := c.GetInt("user_id")
+
+	err = h.globalForwardService.UpdateGlobalForwardRule(ruleID, userID, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": fmt.Sprintf("用户 %s 更新全局转发规则成功", username),
+	})
+}
+
+// DeleteGlobalForwardRule 删除全局转发规则
+func (h *EmailHandler) DeleteGlobalForwardRule(c *gin.Context) {
+	c.Header("Content-Type", "application/json; charset=utf-8")
+
+	ruleIDStr := c.Param("id")
+	ruleID, err := strconv.Atoi(ruleIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "无效的规则ID",
+		})
+		return
+	}
+
+	username := c.GetString("username")
+	userID := c.GetInt("user_id")
+
+	err = h.globalForwardService.DeleteGlobalForwardRule(ruleID, userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": fmt.Sprintf("用户 %s 删除全局转发规则成功", username),
+	})
+}
+
+// ToggleGlobalForwardRule 切换全局转发规则状态
+func (h *EmailHandler) ToggleGlobalForwardRule(c *gin.Context) {
+	c.Header("Content-Type", "application/json; charset=utf-8")
+
+	ruleIDStr := c.Param("id")
+	ruleID, err := strconv.Atoi(ruleIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "无效的规则ID",
+		})
+		return
+	}
+
+	var req struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "请求参数错误: " + err.Error(),
+		})
+		return
+	}
+
+	username := c.GetString("username")
+	userID := c.GetInt("user_id")
+
+	err = h.globalForwardService.ToggleGlobalForwardRule(ruleID, userID, req.Enabled)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	status := "禁用"
+	if req.Enabled {
+		status = "启用"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": fmt.Sprintf("用户 %s %s全局转发规则成功", username, status),
+	})
 }

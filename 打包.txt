@@ -3,6 +3,7 @@ set GOOS=linux
 set GOARCH=amd64
 go build -o mikomail-linux-amd64 .
 
-
+创建新的 tag：git tag v1.0.9
+推送 tag：git push origin v1.0.9
 
 ./mikomail-linux-amd64
