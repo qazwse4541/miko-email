@@ -33,13 +33,13 @@ func (s *VerificationService) InitDefaultRules() error {
 		return nil // 已经初始化过
 	}
 
-	// 插入默认规则
+	// 插入默认规则（user_id为NULL表示系统默认规则）
 	for _, rule := range models.DefaultVerificationRules {
 		_, err := s.db.Exec(`
-			INSERT INTO verification_rules (name, description, pattern, type, priority, enabled, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+			INSERT INTO verification_rules (user_id, name, description, pattern, type, priority, enabled, created_at, updated_at)
+			VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)
 		`, rule.Name, rule.Description, rule.Pattern, rule.Type, rule.Priority, rule.Enabled, time.Now(), time.Now())
-		
+
 		if err != nil {
 			return fmt.Errorf("插入默认规则失败: %v", err)
 		}
@@ -48,13 +48,14 @@ func (s *VerificationService) InitDefaultRules() error {
 	return nil
 }
 
-// GetRules 获取所有验证码规则
-func (s *VerificationService) GetRules() ([]models.VerificationRule, error) {
+// GetRules 获取用户的验证码规则（包括系统默认规则和用户自定义规则）
+func (s *VerificationService) GetRules(userID int) ([]models.VerificationRule, error) {
 	rows, err := s.db.Query(`
-		SELECT id, name, description, pattern, type, priority, enabled, created_at, updated_at
+		SELECT id, user_id, name, description, pattern, type, priority, enabled, created_at, updated_at
 		FROM verification_rules
+		WHERE user_id IS NULL OR user_id = ?
 		ORDER BY priority ASC, created_at ASC
-	`)
+	`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("查询验证码规则失败: %v", err)
 	}
@@ -63,7 +64,7 @@ func (s *VerificationService) GetRules() ([]models.VerificationRule, error) {
 	var rules []models.VerificationRule
 	for rows.Next() {
 		var rule models.VerificationRule
-		err := rows.Scan(&rule.ID, &rule.Name, &rule.Description, &rule.Pattern, 
+		err := rows.Scan(&rule.ID, &rule.UserID, &rule.Name, &rule.Description, &rule.Pattern,
 			&rule.Type, &rule.Priority, &rule.Enabled, &rule.CreatedAt, &rule.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("扫描验证码规则失败: %v", err)
@@ -74,14 +75,14 @@ func (s *VerificationService) GetRules() ([]models.VerificationRule, error) {
 	return rules, nil
 }
 
-// GetEnabledRules 获取启用的验证码规则
-func (s *VerificationService) GetEnabledRules() ([]models.VerificationRule, error) {
+// GetEnabledRules 获取用户启用的验证码规则（包括系统默认规则和用户自定义规则）
+func (s *VerificationService) GetEnabledRules(userID int) ([]models.VerificationRule, error) {
 	rows, err := s.db.Query(`
-		SELECT id, name, description, pattern, type, priority, enabled, created_at, updated_at
+		SELECT id, user_id, name, description, pattern, type, priority, enabled, created_at, updated_at
 		FROM verification_rules
-		WHERE enabled = 1
+		WHERE enabled = 1 AND (user_id IS NULL OR user_id = ?)
 		ORDER BY priority ASC, created_at ASC
-	`)
+	`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("查询启用的验证码规则失败: %v", err)
 	}
@@ -90,7 +91,7 @@ func (s *VerificationService) GetEnabledRules() ([]models.VerificationRule, erro
 	var rules []models.VerificationRule
 	for rows.Next() {
 		var rule models.VerificationRule
-		err := rows.Scan(&rule.ID, &rule.Name, &rule.Description, &rule.Pattern, 
+		err := rows.Scan(&rule.ID, &rule.UserID, &rule.Name, &rule.Description, &rule.Pattern,
 			&rule.Type, &rule.Priority, &rule.Enabled, &rule.CreatedAt, &rule.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("扫描验证码规则失败: %v", err)
@@ -102,7 +103,7 @@ func (s *VerificationService) GetEnabledRules() ([]models.VerificationRule, erro
 }
 
 // CreateRule 创建验证码规则
-func (s *VerificationService) CreateRule(rule *models.VerificationRule) error {
+func (s *VerificationService) CreateRule(rule *models.VerificationRule, userID int) error {
 	// 验证正则表达式
 	_, err := regexp.Compile(rule.Pattern)
 	if err != nil {
@@ -111,12 +112,13 @@ func (s *VerificationService) CreateRule(rule *models.VerificationRule) error {
 
 	rule.CreatedAt = time.Now()
 	rule.UpdatedAt = time.Now()
+	rule.UserID = &userID // 设置为当前用户的规则
 
 	result, err := s.db.Exec(`
-		INSERT INTO verification_rules (name, description, pattern, type, priority, enabled, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`, rule.Name, rule.Description, rule.Pattern, rule.Type, rule.Priority, rule.Enabled, rule.CreatedAt, rule.UpdatedAt)
-	
+		INSERT INTO verification_rules (user_id, name, description, pattern, type, priority, enabled, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, rule.UserID, rule.Name, rule.Description, rule.Pattern, rule.Type, rule.Priority, rule.Enabled, rule.CreatedAt, rule.UpdatedAt)
+
 	if err != nil {
 		return fmt.Errorf("创建验证码规则失败: %v", err)
 	}
@@ -130,22 +132,27 @@ func (s *VerificationService) CreateRule(rule *models.VerificationRule) error {
 	return nil
 }
 
-// UpdateRule 更新验证码规则
-func (s *VerificationService) UpdateRule(rule *models.VerificationRule) error {
+// UpdateRule 更新验证码规则（只能更新用户自己的规则）
+func (s *VerificationService) UpdateRule(rule *models.VerificationRule, userID int) error {
 	// 验证正则表达式
 	_, err := regexp.Compile(rule.Pattern)
 	if err != nil {
 		return fmt.Errorf("无效的正则表达式: %v", err)
 	}
 
+	// 检查规则是否属于当前用户
+	if !s.canUserModifyRule(rule.ID, userID) {
+		return fmt.Errorf("无权限修改此规则")
+	}
+
 	rule.UpdatedAt = time.Now()
 
 	_, err = s.db.Exec(`
-		UPDATE verification_rules 
+		UPDATE verification_rules
 		SET name = ?, description = ?, pattern = ?, type = ?, priority = ?, enabled = ?, updated_at = ?
-		WHERE id = ?
-	`, rule.Name, rule.Description, rule.Pattern, rule.Type, rule.Priority, rule.Enabled, rule.UpdatedAt, rule.ID)
-	
+		WHERE id = ? AND user_id = ?
+	`, rule.Name, rule.Description, rule.Pattern, rule.Type, rule.Priority, rule.Enabled, rule.UpdatedAt, rule.ID, userID)
+
 	if err != nil {
 		return fmt.Errorf("更新验证码规则失败: %v", err)
 	}
@@ -153,13 +160,35 @@ func (s *VerificationService) UpdateRule(rule *models.VerificationRule) error {
 	return nil
 }
 
-// DeleteRule 删除验证码规则
-func (s *VerificationService) DeleteRule(id int) error {
-	_, err := s.db.Exec("DELETE FROM verification_rules WHERE id = ?", id)
+// DeleteRule 删除验证码规则（只能删除用户自己的规则）
+func (s *VerificationService) DeleteRule(id int, userID int) error {
+	// 检查规则是否属于当前用户
+	if !s.canUserModifyRule(id, userID) {
+		return fmt.Errorf("无权限删除此规则")
+	}
+
+	_, err := s.db.Exec("DELETE FROM verification_rules WHERE id = ? AND user_id = ?", id, userID)
 	if err != nil {
 		return fmt.Errorf("删除验证码规则失败: %v", err)
 	}
 	return nil
+}
+
+// canUserModifyRule 检查用户是否可以修改指定规则
+func (s *VerificationService) canUserModifyRule(ruleID int, userID int) bool {
+	var ownerID *int
+	err := s.db.QueryRow("SELECT user_id FROM verification_rules WHERE id = ?", ruleID).Scan(&ownerID)
+	if err != nil {
+		return false
+	}
+
+	// 系统默认规则（user_id为NULL）不能被修改
+	if ownerID == nil {
+		return false
+	}
+
+	// 只能修改自己的规则
+	return *ownerID == userID
 }
 
 // htmlToText 将HTML内容转换为纯文本
@@ -198,8 +227,8 @@ func htmlToText(htmlContent string) string {
 }
 
 // ExtractVerificationCodes 从邮件内容中提取验证码
-func (s *VerificationService) ExtractVerificationCodes(content string) ([]models.ExtractedCode, error) {
-	rules, err := s.GetEnabledRules()
+func (s *VerificationService) ExtractVerificationCodes(content string, userID int) ([]models.ExtractedCode, error) {
+	rules, err := s.GetEnabledRules(userID)
 	if err != nil {
 		return nil, fmt.Errorf("获取验证码规则失败: %v", err)
 	}

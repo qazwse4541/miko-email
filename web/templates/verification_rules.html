@@ -98,6 +98,16 @@
             background-color: #667eea;
             border-color: #667eea;
         }
+        .form-switch .form-check-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: #e9ecef;
+            border-color: #ced4da;
+        }
+        .form-switch .form-check-input:disabled:checked {
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
         .btn-add-rule {
             background: linear-gradient(45deg, #28a745, #20c997);
             border: none;
@@ -557,7 +567,8 @@ function renderVerificationRules(rules) {
                     <small class="text-muted">${rule.description || ''}</small>
                 </div>
                 <div class="col-md-2">
-                    <span class="badge ${rule.type === 'default' ? 'bg-primary' : 'bg-success'}">${rule.type === 'default' ? '默认规则' : '自定义规则'}</span>
+                    <span class="badge ${rule.type === 'default' ? 'bg-primary' : 'bg-success'}">${rule.type === 'default' ? '系统默认' : '用户自定义'}</span>
+                    ${rule.user_id ? '<br><small class="text-muted">我的规则</small>' : '<br><small class="text-muted">系统规则</small>'}
                 </div>
                 <div class="col-md-4">
                     <div class="regex-example">
@@ -567,14 +578,15 @@ function renderVerificationRules(rules) {
                 <div class="col-md-2">
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="rule${rule.id}" ${rule.enabled ? 'checked' : ''}
-                               onchange="toggleRule(${rule.id}, this.checked)">
+                               onchange="toggleRule(${rule.id}, this.checked)" ${rule.user_id === null ? 'disabled' : ''}>
                     </div>
+                    ${rule.user_id === null ? '<small class="text-muted">系统规则不可修改</small>' : ''}
                 </div>
                 <div class="col-md-2">
                     <div class="btn-group">
                         <button class="btn btn-sm btn-test" onclick="testRule(${rule.id}, '${rule.pattern.replace(/'/g, "\\'")}')">测试</button>
-                        <button class="btn btn-sm btn-edit" onclick="editRule(${rule.id})">编辑</button>
-                        ${rule.type === 'custom' ? `<button class="btn btn-sm btn-delete" onclick="deleteRule(${rule.id})">删除</button>` : ''}
+                        ${rule.user_id !== null ? `<button class="btn btn-sm btn-edit" onclick="editRule(${rule.id})">编辑</button>` : ''}
+                        ${rule.user_id !== null ? `<button class="btn btn-sm btn-delete" onclick="deleteRule(${rule.id})">删除</button>` : ''}
                     </div>
                 </div>
             </div>
@@ -596,6 +608,17 @@ async function toggleRule(ruleId, enabled) {
         const rule = rulesResponse.data.data.find(r => r.id === ruleId);
         if (!rule) {
             showAlert('规则不存在');
+            return;
+        }
+
+        // 检查是否为系统默认规则
+        if (rule.user_id === null) {
+            showAlert('系统默认规则不能修改');
+            // 恢复开关状态
+            const checkbox = document.getElementById(`rule${ruleId}`);
+            if (checkbox) {
+                checkbox.checked = rule.enabled;
+            }
             return;
         }
 
@@ -732,6 +755,12 @@ async function editRule(ruleId) {
             return;
         }
 
+        // 检查是否为系统默认规则
+        if (rule.user_id === null) {
+            showAlert('系统默认规则不能编辑');
+            return;
+        }
+
         // 填充编辑表单
         document.getElementById('editRuleId').value = rule.id;
         document.getElementById('editRuleName').value = rule.name;
@@ -792,11 +821,30 @@ async function updateRule() {
 
 // 删除规则
 async function deleteRule(ruleId) {
-    if (!confirm('确定要删除这个验证码规则吗？')) {
-        return;
-    }
-
     try {
+        // 先获取规则信息，确认权限
+        const rulesResponse = await axios.get('/api/verification-rules');
+        if (!rulesResponse.data.success) {
+            showAlert('获取规则信息失败');
+            return;
+        }
+
+        const rule = rulesResponse.data.data.find(r => r.id === ruleId);
+        if (!rule) {
+            showAlert('规则不存在');
+            return;
+        }
+
+        // 检查是否为系统默认规则
+        if (rule.user_id === null) {
+            showAlert('系统默认规则不能删除');
+            return;
+        }
+
+        if (!confirm('确定要删除这个验证码规则吗？')) {
+            return;
+        }
+
         const response = await axios.delete(`/api/verification-rules/${ruleId}`);
         if (response.data.success) {
             showAlert('验证码规则删除成功');

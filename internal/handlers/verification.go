@@ -25,7 +25,17 @@ func NewVerificationHandler(verificationService *services.VerificationService, s
 
 // GetRules 获取验证码规则列表
 func (h *VerificationHandler) GetRules(c *gin.Context) {
-	rules, err := h.verificationService.GetRules()
+	// 获取当前用户ID
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "未授权",
+		})
+		return
+	}
+
+	rules, err := h.verificationService.GetRules(userID.(int))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -43,6 +53,16 @@ func (h *VerificationHandler) GetRules(c *gin.Context) {
 
 // CreateRule 创建验证码规则
 func (h *VerificationHandler) CreateRule(c *gin.Context) {
+	// 获取当前用户ID
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "未授权",
+		})
+		return
+	}
+
 	var req struct {
 		Name        string `json:"name" binding:"required"`
 		Description string `json:"description"`
@@ -75,7 +95,7 @@ func (h *VerificationHandler) CreateRule(c *gin.Context) {
 		Enabled:     req.Enabled,
 	}
 
-	err := h.verificationService.CreateRule(rule)
+	err := h.verificationService.CreateRule(rule, userID.(int))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -94,6 +114,16 @@ func (h *VerificationHandler) CreateRule(c *gin.Context) {
 
 // UpdateRule 更新验证码规则
 func (h *VerificationHandler) UpdateRule(c *gin.Context) {
+	// 获取当前用户ID
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "未授权",
+		})
+		return
+	}
+
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -132,7 +162,7 @@ func (h *VerificationHandler) UpdateRule(c *gin.Context) {
 		Enabled:     req.Enabled,
 	}
 
-	err = h.verificationService.UpdateRule(rule)
+	err = h.verificationService.UpdateRule(rule, userID.(int))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -151,6 +181,16 @@ func (h *VerificationHandler) UpdateRule(c *gin.Context) {
 
 // DeleteRule 删除验证码规则
 func (h *VerificationHandler) DeleteRule(c *gin.Context) {
+	// 获取当前用户ID
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "未授权",
+		})
+		return
+	}
+
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -161,7 +201,7 @@ func (h *VerificationHandler) DeleteRule(c *gin.Context) {
 		return
 	}
 
-	err = h.verificationService.DeleteRule(id)
+	err = h.verificationService.DeleteRule(id, userID.(int))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -211,6 +251,16 @@ func (h *VerificationHandler) TestRule(c *gin.Context) {
 
 // ExtractCodes 从邮件内容中提取验证码
 func (h *VerificationHandler) ExtractCodes(c *gin.Context) {
+	// 获取当前用户ID
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "未授权",
+		})
+		return
+	}
+
 	var req struct {
 		Content string `json:"content" binding:"required"`
 	}
@@ -224,7 +274,7 @@ func (h *VerificationHandler) ExtractCodes(c *gin.Context) {
 		return
 	}
 
-	extractedCodes, err := h.verificationService.ExtractVerificationCodes(req.Content)
+	extractedCodes, err := h.verificationService.ExtractVerificationCodes(req.Content, userID.(int))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

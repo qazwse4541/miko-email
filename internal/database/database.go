@@ -37,6 +37,11 @@ func Init(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to create default admin: %w", err)
 	}
 
+	// 迁移验证码规则表
+	if err := MigrateVerificationRules(db); err != nil {
+		return nil, fmt.Errorf("failed to migrate verification rules: %w", err)
+	}
+
 	if err := initDefaultVerificationRules(db); err != nil {
 		return nil, fmt.Errorf("failed to init default verification rules: %w", err)
 	}
@@ -180,6 +185,7 @@ func createTables(db *sql.DB) error {
 		// 验证码规则表
 		`CREATE TABLE IF NOT EXISTS verification_rules (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER,
 			name TEXT NOT NULL,
 			description TEXT,
 			pattern TEXT NOT NULL,
@@ -187,7 +193,8 @@ func createTables(db *sql.DB) error {
 			priority INTEGER DEFAULT 0,
 			enabled BOOLEAN DEFAULT 1,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 		)`,
 
 		// 创建索引
@@ -376,11 +383,11 @@ func initDefaultVerificationRules(db *sql.DB) error {
 		},
 	}
 
-	// 插入默认规则
+	// 插入默认规则（user_id为NULL表示系统默认规则）
 	for _, rule := range defaultRules {
 		_, err := db.Exec(`
-			INSERT INTO verification_rules (name, description, pattern, type, priority, enabled, created_at, updated_at)
-			VALUES (?, ?, ?, 'default', ?, 1, ?, ?)
+			INSERT INTO verification_rules (user_id, name, description, pattern, type, priority, enabled, created_at, updated_at)
+			VALUES (1, ?, ?, ?, 'default', ?, 1, ?, ?)
 		`, rule.Name, rule.Description, rule.Pattern, rule.Priority, time.Now(), time.Now())
 
 		if err != nil {

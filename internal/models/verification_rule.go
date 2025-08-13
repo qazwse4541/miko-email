@@ -9,6 +9,7 @@ import (
 // VerificationRule 验证码提取规则
 type VerificationRule struct {
 	ID          int       `json:"id" db:"id"`
+	UserID      *int      `json:"user_id,omitempty" db:"user_id"` // 用户ID，NULL表示系统默认规则
 	Name        string    `json:"name" db:"name"`                 // 规则名称
 	Description string    `json:"description" db:"description"`   // 规则描述
 	Pattern     string    `json:"pattern" db:"pattern"`           // 正则表达式

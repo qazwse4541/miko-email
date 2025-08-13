@@ -1080,7 +1080,7 @@ func (h *EmailHandler) GetVerificationCode(c *gin.Context) {
 		}
 
 		// 提取验证码 - 使用验证码服务
-		extractedCodes, err := h.verificationService.ExtractVerificationCodes(email.Body)
+		extractedCodes, err := h.verificationService.ExtractVerificationCodes(email.Body, userID)
 		if err == nil && len(extractedCodes) > 0 {
 			// 转换为字符串数组格式以保持兼容性
 			var codes []string
