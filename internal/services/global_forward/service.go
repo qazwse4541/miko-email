@@ -226,16 +226,28 @@ func (s *Service) ToggleGlobalForwardRule(ruleID, userID int, enabled bool) erro
 
 // GetActiveGlobalForwardRules 获取活跃的全局转发规则（用于邮件处理）
 func (s *Service) GetActiveGlobalForwardRules(sourceEmail string) ([]*GlobalForwardRule, error) {
+	// 首先获取邮箱对应的用户ID
+	var userID int
+	err := s.db.QueryRow("SELECT user_id FROM mailboxes WHERE email = ? AND is_active = 1", sourceEmail).Scan(&userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Printf("邮箱 %s 不存在或未激活，跳过全局转发规则检查", sourceEmail)
+			return []*GlobalForwardRule{}, nil
+		}
+		return nil, fmt.Errorf("查询邮箱用户ID失败: %w", err)
+	}
+
+	// 只查询该用户创建的活跃全局转发规则
 	query := `
-		SELECT id, user_id, name, source_pattern, target_email, enabled, 
-		       keep_original, forward_attachments, subject_prefix, description, 
+		SELECT id, user_id, name, source_pattern, target_email, enabled,
+		       keep_original, forward_attachments, subject_prefix, description,
 		       priority, forward_count, last_forward_at, created_at, updated_at
-		FROM global_forward_rules 
-		WHERE enabled = 1 
+		FROM global_forward_rules
+		WHERE enabled = 1 AND user_id = ?
 		ORDER BY priority DESC, created_at ASC
 	`
-	
-	rows, err := s.db.Query(query)
+
+	rows, err := s.db.Query(query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("查询活跃全局转发规则失败: %w", err)
 	}
