@@ -584,7 +584,7 @@ function renderVerificationRules(rules) {
                 </div>
                 <div class="col-md-2">
                     <div class="btn-group">
-                        <button class="btn btn-sm btn-test" onclick="testRule(${rule.id}, '${rule.pattern.replace(/'/g, "\\'")}')">测试</button>
+                        <button class="btn btn-sm btn-test" onclick="testRule(${rule.id}, '${rule.pattern.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}')">测试</button>
                         ${rule.user_id !== null ? `<button class="btn btn-sm btn-edit" onclick="editRule(${rule.id})">编辑</button>` : ''}
                         ${rule.user_id !== null ? `<button class="btn btn-sm btn-delete" onclick="deleteRule(${rule.id})">删除</button>` : ''}
                     </div>
