@@ -94,6 +94,7 @@ func (s *Server) setupRoutes() {
 
 	// 创建邮件发送服务
 	var mailService *mail.Service
+	siteName := config.GetSiteName() // 获取网站名称
 	if config.GlobalYAMLConfig != nil {
 		host, port, username, password, secure, fromName := config.GlobalYAMLConfig.GetSMTPSenderConfig()
 		if host != "" && username != "" && password != "" {
@@ -105,7 +106,7 @@ func (s *Server) setupRoutes() {
 				Secure:   secure,
 				FromName: fromName,
 			}
-			mailService = mail.NewService(mailConfig)
+			mailService = mail.NewService(mailConfig, siteName)
 		}
 	}
 	
@@ -120,7 +121,7 @@ func (s *Server) setupRoutes() {
 			Secure:   "ssl",
 			FromName: "YouDDNS",
 		}
-		mailService = mail.NewService(mailConfig)
+		mailService = mail.NewService(mailConfig, siteName)
 	}
 
 	// 创建处理器实例

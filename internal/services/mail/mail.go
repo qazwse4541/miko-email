@@ -16,12 +16,14 @@ type SMTPConfig struct {
 }
 
 type Service struct {
-	config SMTPConfig
+	config   SMTPConfig
+	siteName string
 }
 
-func NewService(config SMTPConfig) *Service {
+func NewService(config SMTPConfig, siteName string) *Service {
 	return &Service{
-		config: config,
+		config:   config,
+		siteName: siteName,
 	}
 }
 
@@ -110,13 +112,66 @@ func (s *Service) sendWithSSL(addr, to string, msg []byte) error {
 
 // sendWithTLS 使用STARTTLS发送邮件
 func (s *Service) sendWithTLS(addr, to string, msg []byte) error {
+	// 连接到SMTP服务器
+	client, err := smtp.Dial(addr)
+	if err != nil {
+		return fmt.Errorf("连接SMTP服务器失败: %v", err)
+	}
+	defer client.Quit()
+
+	// 发送EHLO命令
+	if err := client.Hello("localhost"); err != nil {
+		return fmt.Errorf("EHLO命令失败: %v", err)
+	}
+
+	// 启动TLS
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: true,
+		ServerName:         s.config.Host,
+	}
+
+	if err := client.StartTLS(tlsConfig); err != nil {
+		return fmt.Errorf("启动TLS失败: %v", err)
+	}
+
+	// 认证
 	auth := smtp.PlainAuth("", s.config.Username, s.config.Password, s.config.Host)
-	return smtp.SendMail(addr, auth, s.config.Username, []string{to}, msg)
+	if err := client.Auth(auth); err != nil {
+		return fmt.Errorf("SMTP认证失败: %v", err)
+	}
+
+	// 设置发件人
+	if err := client.Mail(s.config.Username); err != nil {
+		return fmt.Errorf("设置发件人失败: %v", err)
+	}
+
+	// 设置收件人
+	if err := client.Rcpt(to); err != nil {
+		return fmt.Errorf("设置收件人失败: %v", err)
+	}
+
+	// 发送邮件内容
+	writer, err := client.Data()
+	if err != nil {
+		return fmt.Errorf("开始发送邮件内容失败: %v", err)
+	}
+
+	_, err = writer.Write(msg)
+	if err != nil {
+		return fmt.Errorf("写入邮件内容失败: %v", err)
+	}
+
+	err = writer.Close()
+	if err != nil {
+		return fmt.Errorf("关闭邮件写入器失败: %v", err)
+	}
+
+	return nil
 }
 
 // SendPasswordResetEmail 发送密码重置邮件
 func (s *Service) SendPasswordResetEmail(to, username, resetURL string) error {
-	subject := "密码重置 - 思.凡邮箱系统"
+	subject := fmt.Sprintf("密码重置 - %s", s.siteName)
 	
 	body := fmt.Sprintf(`
 <!DOCTYPE html>
@@ -214,7 +269,7 @@ func (s *Service) SendPasswordResetEmail(to, username, resetURL string) error {
     <div class="container">
         <div class="header">
             <div class="logo">📧</div>
-            <h1 class="title">思.凡邮箱系统</h1>
+            <h1 class="title">%s</h1>
         </div>
         
         <div class="content">
@@ -249,12 +304,12 @@ func (s *Service) SendPasswordResetEmail(to, username, resetURL string) error {
         <div class="footer">
             <p>此邮件由系统自动发送，请勿回复。</p>
             <p>如有疑问，请联系系统管理员。</p>
-            <p>&copy; 2024 思.凡邮箱系统</p>
+            <p>&copy; 2024 %s</p>
         </div>
     </div>
 </body>
 </html>
-`, username, resetURL, resetURL, resetURL)
+`, s.siteName, username, resetURL, resetURL, resetURL, s.siteName)
 
 	return s.SendEmail(to, subject, body)
 }
