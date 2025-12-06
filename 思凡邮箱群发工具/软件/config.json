@@ -1,0 +1,38 @@
+{
+  "server_url": "http://111.119.198.162:8080",
+  "default_batch_size": 1,
+  "default_delay": 0,
+  "auto_save_draft": true,
+  "templates": {
+    "默认模板": {
+      "subject": "默认邮件主题",
+      "content": "这是默认邮件内容模板。",
+      "is_html": false
+    },
+    "营销邮件模板": {
+      "subject": "【优惠活动】限时特价，不容错过！",
+      "content": "亲爱的用户，\n\n我们为您准备了特别优惠活动，现在购买可享受超值折扣！\n\n活动详情：\n- 全场商品8折优惠\n- 满200元免运费\n- 限时3天，数量有限\n\n立即购买：[链接地址]\n\n如有疑问，请联系客服。\n\n祝您购物愉快！\n客服团队",
+      "is_html": false
+    },
+    "通知邮件模板": {
+      "subject": "【系统通知】重要信息提醒",
+      "content": "尊敬的用户，\n\n这是一条重要的系统通知，请您及时查看。\n\n通知内容：\n[请在此处填写具体通知内容]\n\n如有疑问，请及时联系我们。\n\n谢谢您的配合！\n系统管理员",
+      "is_html": false
+    },
+    "HTML基础模板": {
+      "subject": "HTML邮件测试",
+      "content": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>HTML邮件</title>\n</head>\n<body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333;\">\n    <div style=\"max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px;\">\n        <h1 style=\"color: #0066cc;\">HTML邮件测试</h1>\n        <p>尊敬的用户：</p>\n        <p>这是一封<strong>HTML格式</strong>的邮件，支持<span style=\"color: red;\">文字颜色</span>、<span style=\"font-size: 18px;\">字体大小</span>等样式。</p>\n        <p>您还可以添加：</p>\n        <ul>\n            <li>项目列表</li>\n            <li>图片链接</li>\n            <li>表格等元素</li>\n        </ul>\n        <p>祝您使用愉快！</p>\n        <div style=\"margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 12px; color: #777;\">\n            此邮件由思凡邮箱群发工具发送\n        </div>\n    </div>\n</body>\n</html>",
+      "is_html": true
+    },
+    "HTML营销模板": {
+      "subject": "【限时优惠】新品上市，折扣享不停！",
+      "content": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>营销邮件</title>\n</head>\n<body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; margin: 0; padding: 0;\">\n    <div style=\"max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);\">\n        <header style=\"text-align: center; padding: 10px 0; border-bottom: 2px solid #0066cc;\">\n            <h1 style=\"color: #0066cc; margin: 0;\">限时特惠活动</h1>\n        </header>\n        \n        <div style=\"padding: 20px 0;\">\n            <h2 style=\"color: #e63946; text-align: center;\">新品上市 · 折扣享不停</h2>\n            \n            <div style=\"background-color: #ffedd6; border-left: 4px solid #ff9500; padding: 15px; margin: 20px 0;\">\n                <p style=\"font-size: 16px; font-weight: bold; margin: 0 0 10px 0;\">尊敬的客户：</p>\n                <p>感谢您一直以来对我们的支持与信任！为回馈新老客户，我们特推出限时优惠活动，多款热销产品低至<span style=\"color: #e63946; font-weight: bold; font-size: 18px;\">5折</span>！</p>\n            </div>\n            \n            <h3 style=\"color: #0066cc; border-bottom: 1px dashed #ccc; padding-bottom: 5px;\">活动详情</h3>\n            <ul style=\"list-style-type: none; padding: 0;\">\n                <li style=\"padding: 8px 0; border-bottom: 1px dotted #eee;\">\n                    <span style=\"background-color: #0066cc; color: white; padding: 2px 8px; border-radius: 3px; margin-right: 10px;\">活动时间</span>\n                    2023年6月1日 - 2023年6月30日\n                </li>\n                <li style=\"padding: 8px 0; border-bottom: 1px dotted #eee;\">\n                    <span style=\"background-color: #0066cc; color: white; padding: 2px 8px; border-radius: 3px; margin-right: 10px;\">参与方式</span>\n                    访问我们的官方网站或实体店\n                </li>\n                <li style=\"padding: 8px 0; border-bottom: 1px dotted #eee;\">\n                    <span style=\"background-color: #0066cc; color: white; padding: 2px 8px; border-radius: 3px; margin-right: 10px;\">优惠力度</span>\n                    全场商品5-8折，部分特价商品低至3折\n                </li>\n            </ul>\n            \n            <div style=\"text-align: center; margin: 30px 0;\">\n                <a href=\"#\" style=\"background-color: #e63946; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;\">立即抢购</a>\n            </div>\n        </div>\n        \n        <footer style=\"text-align: center; padding-top: 20px; border-top: 1px solid #eee; color: #777; font-size: 12px;\">\n            <p>此邮件由思凡邮箱群发工具发送，请勿直接回复</p>\n            <p>如需退订，请<a href=\"#\" style=\"color: #0066cc;\">点击这里</a></p>\n        </footer>\n    </div>\n</body>\n</html>",
+      "is_html": true
+    },
+    "HTML通知模板": {
+      "subject": "【重要通知】系统升级公告",
+      "content": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>系统通知</title>\n</head>\n<body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0;\">\n    <div style=\"max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-left: 4px solid #2c3e50;\">\n        <div style=\"background-color: #2c3e50; color: white; padding: 15px; text-align: center;\">\n            <h1 style=\"margin: 0; font-size: 24px;\">系统升级通知</h1>\n        </div>\n        \n        <div style=\"padding: 20px; border: 1px solid #eee; border-top: none;\">\n            <p style=\"font-size: 16px;\">尊敬的用户：</p>\n            \n            <p>为了提供更好的服务体验，我们计划于<strong style=\"color: #e74c3c;\">2023年7月15日 22:00-次日 02:00</strong>进行系统升级维护。</p>\n            \n            <div style=\"background-color: #f8f9fa; border-left: 4px solid #5bc0de; padding: 15px; margin: 20px 0;\">\n                <h3 style=\"margin-top: 0; color: #5bc0de;\">维护期间影响：</h3>\n                <ul style=\"padding-left: 20px;\">\n                    <li>系统将暂时无法登录</li>\n                    <li>已发送的邮件不受影响</li>\n                    <li>维护完成后系统将自动恢复</li>\n                </ul>\n            </div>\n            \n            <p>升级后，系统将新增以下功能：</p>\n            <ol style=\"padding-left: 20px;\">\n                <li>全新的用户界面，操作更便捷</li>\n                <li>邮件发送速度提升50%</li>\n                <li>新增数据分析报表功能</li>\n                <li>更强大的邮件模板编辑器</li>\n            </ol>\n            \n            <p>感谢您的理解与支持！如有疑问，请联系我们的客服团队。</p>\n            \n            <div style=\"text-align: center; margin: 30px 0;\">\n                <a href=\"#\" style=\"background-color: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;\">查看详情</a>\n            </div>\n        </div>\n        \n        <footer style=\"text-align: center; margin-top: 20px; font-size: 12px; color: #777;\">\n            <p>此邮件由系统自动发送，请勿直接回复</p>\n            <p>© 2023 思凡邮箱系统 版权所有</p>\n        </footer>\n    </div>\n</body>\n</html>",
+      "is_html": true
+    }
+  }
+}
